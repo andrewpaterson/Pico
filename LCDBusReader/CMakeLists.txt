@@ -8,7 +8,12 @@ set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
 add_executable(lcd_bus_reader
-  LCDBusReader.c
+  src/LCDBusReader.cpp
+  src/LCDDisplay.cpp
+)
+
+target_include_directories(lcd_bus_reader PRIVATE
+  src/
 )
 
 pico_enable_stdio_usb(lcd_bus_reader 1)
