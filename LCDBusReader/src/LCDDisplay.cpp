@@ -21,6 +21,7 @@ const uint eCycleTime = 1;
 uint make_lcd_mask(bool rs, bool rw, bool e, uint val);
 uint make_command_mask(bool rs, bool rw, bool e);
 void put_lines(uint writeMask, uint readMask, char* szLine1, char* szLine2);
+void put_clear(uint writeMask, uint readMask);
 void init_lcd(uint writeMask, uint commandMask);
 
 
@@ -36,8 +37,7 @@ void put_clear(void)
 {
     uint writeMask = make_lcd_mask(true, true, true, 0xff);
     uint commandMask = make_command_mask(true, true, true);
-    init_lcd(writeMask, commandMask);
-
+    put_clear(writeMask, commandMask);
 }
 
 
@@ -130,6 +130,7 @@ void put(uint writeMask, uint readMask, bool rs, bool rw, uint data, uint minDel
     wait_for_busy(readMask);
 }
 
+
 void put_function(uint writeMask, uint readMask, bool eightBit, bool twoLines, bool largeFont)
 {
     uint function = 0b00100000;
@@ -141,6 +142,7 @@ void put_function(uint writeMask, uint readMask, bool eightBit, bool twoLines, b
     put(writeMask, readMask, false, false, function, 39);
 }
 
+
 void put_display(uint writeMask, uint readMask, bool displayOn, bool cursorOn, bool cursoBlink)
 {
     uint display =  0b00001000;  
@@ -151,6 +153,7 @@ void put_display(uint writeMask, uint readMask, bool displayOn, bool cursorOn, b
     display = display | d2 | d1 | d0;
     put(writeMask, readMask, false, false, display, 39);
 }
+
 
 void put_shift(uint writeMask, uint readMask, bool increment, bool shiftDisplay)
 {
@@ -167,6 +170,7 @@ void put_clear(uint writeMask, uint readMask)
     put(writeMask, readMask, false, false, 0b00000001, 1530);
 }
 
+
 void put_string(uint writeMask, uint readMask, char* sz, int maxLength)
 {
     char*   pc = sz;
@@ -180,6 +184,7 @@ void put_string(uint writeMask, uint readMask, char* sz, int maxLength)
     }
 }
 
+
 void put_display_address(uint writeMask, uint readMask, uint address)
 {
     uint ddAddress = 0b10000000 | address;
@@ -187,9 +192,9 @@ void put_display_address(uint writeMask, uint readMask, uint address)
     put(writeMask, readMask, false, false, ddAddress, 39);
 }
 
+
 void put_lines(uint writeMask, uint readMask, char* szLine1, char* szLine2)
 {
-
     char*   pc;
 
     put_display_address(writeMask, readMask, 0x00);

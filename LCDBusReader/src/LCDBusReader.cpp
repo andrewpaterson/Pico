@@ -125,16 +125,20 @@ int main()
                 uint v6 = gpio_get(PIN_L6) << 6;
                 uint v7 = gpio_get(PIN_L7) << 7;
 
-                uint val = v0 | v1 | v2 | v3 | v4 | v5 | v6 | v7;
+                uint val = (v0 | v1 | v2 | v3 | v4 | v5 | v6 | v7); // | (rand() & 255);
 
                 if (val < 16)
                 {
                     strcat(szLine2, "0");
                     strcat(szLine2, itoa(val, szDecimal, 16));
                 }
-                else
+                else if (val < 256)
                 {
                     strcat(szLine2, itoa(val, szDecimal, 16));
+                }
+                else
+                {
+                    strcat(szLine2, "XX");
                 }
             }
             else
@@ -150,7 +154,7 @@ int main()
 
         put_clear();
         put_lines(szLine1, szLine2);
-        sleep_us_high_power(10000);
+        sleep_us_high_power(100000);
 
         led = !led;
     }
