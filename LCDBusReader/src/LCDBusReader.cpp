@@ -68,7 +68,11 @@ int main()
 
     stdio_init_all();
 
-    init_lcd();
+    S11BitLCDPins s11BitPins;
+
+    s11BitPins.Init(13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3);
+
+    init_lcd(&s11BitPins);
 
     uint latchMask = make_latch_mask(0xff);
     gpio_init_mask(latchMask);
@@ -152,8 +156,8 @@ int main()
             }
         }
 
-        put_clear();
-        put_lines(szLine1, szLine2);
+        put_clear(&s11BitPins);
+        put_lines(&s11BitPins, szLine1, szLine2);
         sleep_us_high_power(100000);
 
         led = !led;

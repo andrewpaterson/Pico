@@ -3,9 +3,30 @@
 #include "pico/stdlib.h"
 
 
-void init_lcd(void);
-void put_clear(void);
-void put_lines(char* szLine1, char* szLine2);
+struct S11BitLCDPins
+{
+    uint uiRegisterSelectGPIO;
+    uint uiReadWriteBGPIO;
+    uint uiEnableGPIO;
+    uint auiDataGPIO[8];
+
+    void Init(  uint uiRegisterSelectGPIO,
+                uint uiReadWriteBGPIO,
+                uint uiEnableGPIO,
+                uint uiData0GPIO,
+                uint uiData1GPIO,
+                uint uiData2GPIO,
+                uint uiData3GPIO,
+                uint uiData4GPIO,
+                uint uiData5GPIO,
+                uint uiData6GPIO,
+                uint uiData7GPIO);
+};
+
+
+void init_lcd(S11BitLCDPins* psPins);
+void put_clear(S11BitLCDPins* psPins);
+void put_lines(S11BitLCDPins* psPins, char* szLine1, char* szLine2);
 
 void sleep_us_high_power(uint delay);
 
