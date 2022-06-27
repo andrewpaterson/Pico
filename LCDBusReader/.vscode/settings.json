@@ -23,5 +23,6 @@
     },
     "files.associations": {
         "lcddisplay.h": "c"
-    }
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
 }

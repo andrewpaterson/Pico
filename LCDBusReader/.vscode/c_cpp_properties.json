@@ -3,7 +3,8 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "/usr/lib/gcc/arm-none-eabi/7.3.1/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
