@@ -1,5 +1,6 @@
 #include "LCDDisplay.h"
 #include "hardware/gpio.h"
+#include "GeneralPins.h"
 
 
 void S11BitLCDPins::Init(uint uiRegisterSelectGPIO,
@@ -59,19 +60,6 @@ void init_lcd(S11BitLCDPins* psPins)
     uint writeMask = make_lcd_mask(psPins, true, true, true, 0xff);
     uint commandMask = make_command_mask(psPins, true, true, true);
     init_lcd(psPins, writeMask, commandMask);
-}
-
-
-void sleep_us_high_power(uint delay)
-{
-    uint64_t start = time_us_64();
-    uint64_t expectedEnd = start + delay;
-    uint64_t end = start;
-
-    while (expectedEnd > end)
-    {
-        end = time_us_64();
-    }
 }
 
 

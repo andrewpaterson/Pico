@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "pico/binary_info.h"
 #include "LCDDisplay.h"
+#include "GeneralPins.h"
 
 
 const uint PIN_LED_PI = 25;
@@ -41,6 +42,7 @@ uint make_latch_mask(uint val)
     return mask;
 }
 
+
 uint make_chip_select_mask(uint val)
 {
     uint v0 = val & 0x01 ? (1 << PIN_CS0) : 0;
@@ -50,6 +52,7 @@ uint make_chip_select_mask(uint val)
     uint mask = v0 | v1 | v2;
     return mask;
 }
+
 
 uint make_led_mask(uint val)
 {

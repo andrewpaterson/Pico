@@ -28,8 +28,6 @@ void init_lcd(S11BitLCDPins* psPins);
 void put_clear(S11BitLCDPins* psPins);
 void put_lines(S11BitLCDPins* psPins, char* szLine1, char* szLine2);
 
-void sleep_us_high_power(uint delay);
-
 
 #endif // __LCD_DISPLAY_H__
 

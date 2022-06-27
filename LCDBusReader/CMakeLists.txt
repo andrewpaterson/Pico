@@ -10,6 +10,8 @@ pico_sdk_init()
 add_executable(lcd_bus_reader
   src/LCDBusReader.cpp
   src/LCDDisplay.cpp
+  src/ShiftRegister.cpp
+  src/GeneralPins.cpp
 )
 
 target_include_directories(lcd_bus_reader PRIVATE
