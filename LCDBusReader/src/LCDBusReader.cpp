@@ -28,21 +28,25 @@ void parallel_LCD(void)
     sPins.Init(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 
     init_lcd(&sPins);
+    put_clear(&sPins);
+    put_to_address(&sPins, "A", 0);
 
-    while(true)
-    {
+    // int     i = 0;
+    // while(true)
+    // {
+    //     strcpy(szLine1, " 00|01|02|03|04");
+    //     itoa(i, szLine2, 10);
 
-        strcpy(szLine1, " 00|01|02|03|04");
-        strcpy(szLine2, " XY    ZA    CD");
+    //     put_clear(&sPins);
+    //     put_lines(&sPins, szLine1, szLine2);
 
-        put_clear(&sPins);
-        put_lines(&sPins, szLine1, szLine2);
+    //     sleep_us_high_power(200000);
 
-        sleep_us_high_power(200000);
+    //     i++;
 
-        gpio_put(25, led);
-        led = !led;
-    }
+    //     gpio_put(25, led);
+    //     led = !led;
+    // }
 }
 
 

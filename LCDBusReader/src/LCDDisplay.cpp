@@ -29,7 +29,7 @@ void S11BitLCDPins::Init(uint uiRegisterSelectGPIO,
 }
 
 
-const uint eCycleTime = 1;
+const uint eCycleTime = 100000;
 
 
 uint make_lcd_mask(S11BitLCDPins* psPins, bool rs, bool rw, bool e, uint val);
@@ -37,6 +37,8 @@ uint make_command_mask(S11BitLCDPins* psPins, bool rs, bool rw, bool e);
 void put_lines(S11BitLCDPins* psPins, uint writeMask, uint readMask, char* szLine1, char* szLine2);
 void put_clear(S11BitLCDPins* psPins, uint writeMask, uint readMask);
 void init_lcd(S11BitLCDPins* psPins, uint writeMask, uint commandMask);
+void put_display_address(S11BitLCDPins* psPins, uint writeMask, uint readMask, uint address);
+void put_string(S11BitLCDPins* psPins, uint writeMask, uint readMask, char* sz, int maxLength);
 
 
 void put_lines(S11BitLCDPins* psPins, char* szLine1, char* szLine2)
@@ -60,6 +62,16 @@ void init_lcd(S11BitLCDPins* psPins)
     uint writeMask = make_lcd_mask(psPins, true, true, true, 0xff);
     uint commandMask = make_command_mask(psPins, true, true, true);
     init_lcd(psPins, writeMask, commandMask);
+}
+
+
+void put_to_address(S11BitLCDPins* psPins, char* sz, uint uiAddress)
+{
+    uint writeMask = make_lcd_mask(psPins, true, true, true, 0xff);
+    uint commandMask = make_command_mask(psPins, true, true, true);
+
+    put_display_address(psPins, writeMask, commandMask, uiAddress);
+    put_string(psPins, writeMask, commandMask, sz, 16);
 }
 
 
@@ -90,28 +102,6 @@ uint make_lcd_mask(S11BitLCDPins* psPins, bool rs, bool rw, bool e, uint val)
     return mask;
 }
 
-void wait_for_busy(S11BitLCDPins* psPins, uint readMask)
-{
-    uint eLow = make_command_mask(psPins, 0, 1, false);
-    uint eHigh = make_command_mask(psPins, 0, 1, true);
-
-    gpio_set_dir_out_masked(readMask);
-    gpio_set_dir(psPins->auiDataGPIO[7], false);
-
-    gpio_put_masked(readMask, eLow);
-    sleep_us_high_power(eCycleTime);
-
-    bool busy = true;
-    while (busy)
-    {
-        gpio_put_masked(readMask, eHigh);
-        sleep_us_high_power(eCycleTime);
-        
-        gpio_put_masked(readMask, eLow);
-        busy = gpio_get(psPins->auiDataGPIO[7]);
-        sleep_us_high_power(eCycleTime);
-    }
-}
 
 void put(S11BitLCDPins* psPins, uint writeMask, uint readMask, bool rs, bool rw, uint data, uint minDelay)
 {
@@ -128,8 +118,7 @@ void put(S11BitLCDPins* psPins, uint writeMask, uint readMask, bool rs, bool rw,
     
     gpio_put_masked(writeMask, eLow);
     sleep_us_high_power(minDelay + eCycleTime);
-
-    wait_for_busy(psPins, readMask);
+    gpio_put_masked(writeMask, 0);
 }
 
 
@@ -197,8 +186,6 @@ void put_display_address(S11BitLCDPins* psPins, uint writeMask, uint readMask, u
 
 void put_lines(S11BitLCDPins* psPins, uint writeMask, uint readMask, char* szLine1, char* szLine2)
 {
-    char*   pc;
-
     put_display_address(psPins, writeMask, readMask, 0x00);
     put_string(psPins, writeMask, readMask, szLine1, 16);
     put_display_address(psPins, writeMask, readMask, 0x40);

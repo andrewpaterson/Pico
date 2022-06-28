@@ -27,6 +27,7 @@ struct S11BitLCDPins
 void init_lcd(S11BitLCDPins* psPins);
 void put_clear(S11BitLCDPins* psPins);
 void put_lines(S11BitLCDPins* psPins, char* szLine1, char* szLine2);
+void put_to_address(S11BitLCDPins* psPins, char* sz, uint uiAddress);
 
 
 #endif // __LCD_DISPLAY_H__
