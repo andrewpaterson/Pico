@@ -29,7 +29,7 @@ void S11BitLCDPins::Init(uint uiRegisterSelectGPIO,
 }
 
 
-const uint eCycleTime = 100000;
+const uint eCycleTime = 1;
 
 
 uint make_lcd_mask(S11BitLCDPins* psPins, bool rs, bool rw, bool e, uint val);

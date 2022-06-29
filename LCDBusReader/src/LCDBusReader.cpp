@@ -7,21 +7,86 @@
 #include "GeneralPins.h"
 
 
+void kitt(int iCount, char* szDest)
+{
+    int iMod = iCount % 26;
+    int i;
+
+    if (iMod <= 13)
+    {
+        for (i = 0; i < 16; i++)
+        {
+            if ((i >= iMod) && (i <= iMod + 2))
+            {
+                szDest[i] = '-';
+            }
+            else
+            {
+                szDest[i] = ' ';
+            }
+        }
+    }
+    else
+    {
+        iMod = 26 - iMod;
+        for (i = 0; i < 16; i++)
+        {
+            if ((i >= iMod) && (i <= iMod + 2))
+            {
+                szDest[i] = '-';
+            }
+            else
+            {
+                szDest[i] = ' ';
+            }
+        }
+    }
+    szDest[16] = 0;
+}
+
+
+void message(int iCount, char* szDest)
+{
+    if (((iCount / 20) % 2) == 0)
+    {
+        strcpy(szDest, "  Parallel pins ");
+    }
+    else
+    {
+        strcpy(szDest, "   driven LCD   ");
+    }
+}
+
+
 void shift_LCD(void)
 {
-    S595OutPins sShiftOut;
-    sShiftOut.Init(PIN_NOT_SET, 18, 17, 16, PIN_NOT_SET);
-    init_shift(&sShiftOut);
+    S595OutPins sPins;
+    sPins.Init(PIN_NOT_SET, 18, 17, 16, PIN_NOT_SET);
+    init_shift(&sPins);
 
-    init_lcd(&sShiftOut);
+    init_lcd(&sPins);
+    put_clear(&sPins);
+
+    int  i = 0;
+    char szLine1[17];
+    char szLine2[17];
+    while(true)
+    {
+        kitt(i, szLine1);
+        message(i, szLine2);
+
+        put_lines(&sPins, szLine1, szLine2);
+
+        sleep_us_high_power(200000);
+
+        i++;
+    }
 }
 
 
 void parallel_LCD(void)
 {
     bool led = true;
-    char szLine1[16];
-    char szLine2[16];
 
     S11BitLCDPins   sPins;
 
@@ -29,24 +94,21 @@ void parallel_LCD(void)
 
     init_lcd(&sPins);
     put_clear(&sPins);
-    put_to_address(&sPins, "A", 0);
 
-    // int     i = 0;
-    // while(true)
-    // {
-    //     strcpy(szLine1, " 00|01|02|03|04");
-    //     itoa(i, szLine2, 10);
+    int  i = 0;
+    char szLine1[17];
+    char szLine2[17];
+    while(true)
+    {
+        kitt(i, szLine1);
+        message(i, szLine2);
 
-    //     put_clear(&sPins);
-    //     put_lines(&sPins, szLine1, szLine2);
+        put_lines(&sPins, szLine1, szLine2);
 
-    //     sleep_us_high_power(200000);
+        sleep_us_high_power(200000);
 
-    //     i++;
-
-    //     gpio_put(25, led);
-    //     led = !led;
-    // }
+        i++;
+    }
 }
 
 
@@ -56,6 +118,8 @@ int main()
     gpio_init(25);
     gpio_set_dir(25, true);
 
+    gpio_put(25, true);
     parallel_LCD();
+    gpio_put(25, false);
 }
 

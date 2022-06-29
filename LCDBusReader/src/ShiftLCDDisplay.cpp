@@ -4,7 +4,7 @@
 #include "ShiftLCDDisplay.h"
 
 
-const uint eCycleTime = 10;
+const uint eCycleTime = 1;
 
 
 void put_lines(S595OutPins* psPins, char* szLine1, char* szLine2);
@@ -25,41 +25,21 @@ uint16_t make_command_value(bool rs, bool rw, bool e, uint data)
 }
 
 
-void wait_for_busy(S595OutPins* psPins)
-{
-    uint16_t uiBusyLow = make_command_value(false, true, false, 0);
-    uint16_t uiBusyHigh = make_command_value(false, true, true, 0);
-    shift_out(psPins, uiBusyLow);
-    sleep_us_high_power(eCycleTime);
-
-    int count = 6;
-    bool busy = true;
-    while (busy)
-    {
-        shift_out(psPins, uiBusyHigh);
-        sleep_us_high_power(eCycleTime);
-        
-        shift_out(psPins, uiBusyLow);
-        sleep_us_high_power(eCycleTime);
-        count--;
-        busy = count != 0;
-    }
-}
-
-
-void put(S595OutPins* psPins, bool rs, bool rw, uint data)
+void put(S595OutPins* psPins, bool rs, bool rw, uint data, uint minDelay)
 {
     uint16_t uiCommandELow = make_command_value(rs, rw, false, data);
+    uint16_t uiCommandEHigh = make_command_value(rs, rw, true, data);
+
     shift_out(psPins, uiCommandELow);
     sleep_us_high_power(eCycleTime);
 
-    uint16_t uiCommandEHigh = make_command_value(rs, rw, true, data);
     shift_out(psPins, uiCommandEHigh);
     sleep_us_high_power(eCycleTime);
-
-    shift_out(psPins, uiCommandELow);    
-
-    wait_for_busy(psPins);
+    
+    shift_out(psPins, uiCommandELow);
+    sleep_us_high_power(minDelay + eCycleTime);
+    
+    shift_out(psPins, 0);
 }
 
 
@@ -71,7 +51,7 @@ void put_function(S595OutPins* psPins, bool eightBit, bool twoLines, bool largeF
     uint f0 = largeFont ? 0b00000100 : 0;
     
     function = function | f2 | f1 | f0;
-    put(psPins, false, false, function);
+    put(psPins, false, false, function, 39);
 }
 
 
@@ -83,7 +63,7 @@ void put_display(S595OutPins* psPins, bool displayOn, bool cursorOn, bool cursoB
     uint d0 = cursoBlink ? 0b00000001 : 0;
     
     display = display | d2 | d1 | d0;
-    put(psPins, false, false, display);
+    put(psPins, false, false, display, 39);
 }
 
 
@@ -94,12 +74,12 @@ void put_shift(S595OutPins* psPins, bool increment, bool shiftDisplay)
     uint e0 = shiftDisplay ? 0b00000001 : 0;
     
     entry = entry | e1 | e0;
-    put(psPins, false, false, entry);
+    put(psPins, false, false, entry, 39);
 }
 
 void put_clear(S595OutPins* psPins)
 {
-    put(psPins, false, false, 0b00000001);
+    put(psPins, false, false, 0b00000001, 1530);
 }
 
 
@@ -110,7 +90,7 @@ void put_string(S595OutPins* psPins, char* sz, int maxLength)
     
     while (*pc && length < maxLength)
     {
-        put(psPins, true, false, *pc);
+        put(psPins, true, false, *pc, 43);
         pc++;
         length++;
     }
@@ -121,7 +101,7 @@ void put_display_address(S595OutPins* psPins, uint address)
 {
     uint ddAddress = 0b10000000 | address;
     
-    put(psPins, false, false, ddAddress);
+    put(psPins, false, false, ddAddress, 39);
 }
 
 
@@ -146,7 +126,12 @@ void init_lcd(S595OutPins* psPins)
     put_display(psPins, true, false, false);
 
     put_shift(psPins, true, false);
+}
 
-    shift_out(psPins, 0);
+
+void put_to_address(S595OutPins* psPins, char* sz, uint uiAddress)
+{
+    put_display_address(psPins, uiAddress);
+    put_string(psPins, sz, 16);
 }
 
