@@ -112,23 +112,7 @@ void parallel_LCD(void)
     }
 }
 
-int giDelay;
-
-void on_uart_rx() 
-{
-    while (uart_is_readable(uart0)) 
-    {
-        uint8_t ch = uart_getc(uart0);
-        if (ch == 1)
-        {
-            giDelay = 20000;
-        }
-        else if (ch == 2)
-        {
-            giDelay = 50000;
-        }
-    }
-}
+int     giDelay;
 
 int main() 
 {
@@ -139,23 +123,17 @@ int main()
     gpio_init(2);
     gpio_set_dir(2, false);
 
-    gpio_set_function(0, GPIO_FUNC_UART);
-    gpio_set_function(1, GPIO_FUNC_UART);
-    
-    uart_init(uart0, 2400);
-    uart_set_baudrate(uart0, 115200);
-    uart_set_hw_flow(uart0, false, false);
-    uart_set_format(uart0, 8, 1, UART_PARITY_NONE);
-    uart_set_fifo_enabled(uart0, false);
+    uart_inst_t* pUart = init_uart(0, 1, 115200 * 4);
+    int iIRQ = get_uart_irq(pUart);
 
-    bool bReceiver = gpio_get(2);
-    if (bReceiver)
+    irq_set_exclusive_handler(iIRQ, uart_receive_irq);
+    irq_set_enabled(iIRQ, true);
+    uart_set_irq_enables(pUart, true, false);
+
+    bool bSlave = gpio_get(2);
+    if (bSlave)
     {
         giDelay = 2000000;
-
-        irq_set_exclusive_handler(UART0_IRQ, on_uart_rx);
-        irq_set_enabled(UART0_IRQ, true);
-        uart_set_irq_enables(uart0, true, false);
     }
     else
     {
@@ -163,20 +141,51 @@ int main()
     }
 
     //parallel_LCD();
-    for (;;)
+    if (!bSlave)
     {
-        gpio_put(25, true);
-        if (!bReceiver)        
+        for (;;)
         {
-            uart_putc(uart0, 1);
-        }        
-        sleep_us_high_power(giDelay);
-        gpio_put(25, false);
-        if (!bReceiver)        
+            gpio_put(25, true);
+            uart_puts(pUart, "Fast\n");
+            sleep_us_high_power(giDelay);
+            gpio_put(25, false);
+            uart_puts(pUart, "Slow\n");
+            sleep_us_high_power(giDelay);
+        }
+    }
+    else
+    {
+        bool bLed = true;
+        for (;;)
         {
-            uart_putc(uart0, 2);
-        }        
-        sleep_us_high_power(giDelay);
+            gpio_put(25, bLed);
+
+            int delay = giDelay;
+
+            uint64_t start = time_us_64();
+            uint64_t expectedEnd = start + delay;
+            uint64_t end = start;
+
+            while (expectedEnd > end)
+            {
+                end = time_us_64();
+                char szMessage[256];
+                bool bNewMessage = read_uart_message(szMessage);
+                if (bNewMessage)
+                {
+                    giDelay = 20000;
+                    if (memcmp(szMessage, "Fast", 4) == 0)
+                    {
+                        giDelay = 20000;
+                    }
+                    else if (memcmp(szMessage, "Slow", 4) == 0)
+                    {
+                        giDelay = 50000;
+                    }
+                }
+            }            
+            bLed = !bLed;
+        }
     }
 }
 
