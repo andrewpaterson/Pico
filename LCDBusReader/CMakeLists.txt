@@ -13,6 +13,7 @@ add_executable(lcd_bus_reader
   src/ShiftRegister.cpp
   src/GeneralPins.cpp
   src/ShiftLCDDisplay.cpp
+  src/UARTComm.cpp
 )
 
 target_include_directories(lcd_bus_reader PRIVATE

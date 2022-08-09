@@ -5,6 +5,7 @@
 #include "ShiftRegister.h"
 #include "ShiftLCDDisplay.h"
 #include "GeneralPins.h"
+#include "UARTComm.h"
 
 
 void kitt(int iCount, char* szDest)
@@ -118,8 +119,27 @@ int main()
     gpio_init(25);
     gpio_set_dir(25, true);
 
-    gpio_put(25, true);
-    parallel_LCD();
-    gpio_put(25, false);
+    gpio_init(2);
+    gpio_set_dir(2, false);
+
+    int iDelay;
+    bool bReceiver = gpio_get(2);
+    if (bReceiver)
+    {
+        iDelay = 20000;
+    }
+    else
+    {
+        iDelay = 200000;
+    }
+
+    //parallel_LCD();
+    for (;;)
+    {
+        gpio_put(25, true);
+        sleep_us_high_power(iDelay);
+        gpio_put(25, false);
+        sleep_us_high_power(iDelay);
+    }
 }
 
