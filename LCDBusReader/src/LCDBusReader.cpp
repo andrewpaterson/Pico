@@ -112,6 +112,23 @@ void parallel_LCD(void)
     }
 }
 
+int giDelay;
+
+void on_uart_rx() 
+{
+    while (uart_is_readable(uart0)) 
+    {
+        uint8_t ch = uart_getc(uart0);
+        if (ch == 1)
+        {
+            giDelay = 20000;
+        }
+        else if (ch == 2)
+        {
+            giDelay = 50000;
+        }
+    }
+}
 
 int main() 
 {
@@ -122,24 +139,44 @@ int main()
     gpio_init(2);
     gpio_set_dir(2, false);
 
-    int iDelay;
+    gpio_set_function(0, GPIO_FUNC_UART);
+    gpio_set_function(1, GPIO_FUNC_UART);
+    
+    uart_init(uart0, 2400);
+    uart_set_baudrate(uart0, 115200);
+    uart_set_hw_flow(uart0, false, false);
+    uart_set_format(uart0, 8, 1, UART_PARITY_NONE);
+    uart_set_fifo_enabled(uart0, false);
+
     bool bReceiver = gpio_get(2);
     if (bReceiver)
     {
-        iDelay = 20000;
+        giDelay = 2000000;
+
+        irq_set_exclusive_handler(UART0_IRQ, on_uart_rx);
+        irq_set_enabled(UART0_IRQ, true);
+        uart_set_irq_enables(uart0, true, false);
     }
     else
     {
-        iDelay = 200000;
+        giDelay = 2000000;
     }
 
     //parallel_LCD();
     for (;;)
     {
         gpio_put(25, true);
-        sleep_us_high_power(iDelay);
+        if (!bReceiver)        
+        {
+            uart_putc(uart0, 1);
+        }        
+        sleep_us_high_power(giDelay);
         gpio_put(25, false);
-        sleep_us_high_power(iDelay);
+        if (!bReceiver)        
+        {
+            uart_putc(uart0, 2);
+        }        
+        sleep_us_high_power(giDelay);
     }
 }
 
