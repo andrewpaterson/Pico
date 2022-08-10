@@ -85,6 +85,7 @@ uint make_command_mask(S11BitLCDPins* psPins, bool rs, bool rw, bool e)
     return mask;
 }
 
+
 uint make_lcd_mask(S11BitLCDPins* psPins, bool rs, bool rw, bool e, uint val)
 {
     uint mask = make_command_mask(psPins, rs, rw, e);
@@ -98,7 +99,7 @@ uint make_lcd_mask(S11BitLCDPins* psPins, bool rs, bool rw, bool e, uint val)
     uint v6 = val & 0x40 ? (1 << psPins->auiDataGPIO[6]) : 0;
     uint v7 = val & 0x80 ? (1 << psPins->auiDataGPIO[7]) : 0;
 
-    mask = mask | v0 | v1 | v2 | v3 | v4 | v5 | v6 |v7;
+    mask = mask | v0 | v1 | v2 | v3 | v4 | v5 | v6 | v7;
     return mask;
 }
 
@@ -194,8 +195,6 @@ void put_lines(S11BitLCDPins* psPins, uint writeMask, uint readMask, char* szLin
 
 void init_lcd(S11BitLCDPins* psPins, uint writeMask, uint commandMask)
 {
-    uint dataMask = make_lcd_mask(psPins, false, false, false, 0xff);
-
     gpio_init_mask(writeMask);
     gpio_set_dir_out_masked(writeMask);
 

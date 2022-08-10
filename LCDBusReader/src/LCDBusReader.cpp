@@ -133,24 +133,53 @@ int main()
     bool bSlave = gpio_get(2);
     if (bSlave)
     {
-        giDelay = 2000000;
+        giDelay = 1000000;
     }
     else
     {
-        giDelay = 2000000;
+        giDelay = 1000000;
     }
 
     //parallel_LCD();
     if (!bSlave)
     {
+        bool bLed = true;
+        int iCount = 0;
+
+        SDualHexDigitPins   sDigits;
+
+        sDigits.Init(PIN_NOT_SET, PIN_NOT_SET, 13, 12, 11, 10, 9, 8, 7, 6);
+
+        init_dual_hex(&sDigits);
+
         for (;;)
         {
-            gpio_put(25, true);
-            uart_puts(pUart, "Fast\n");
-            sleep_us_high_power(giDelay);
-            gpio_put(25, false);
-            uart_puts(pUart, "Slow\n");
-            sleep_us_high_power(giDelay);
+            gpio_put(25, bLed);
+            if (bLed)
+            {
+                uart_puts(pUart, "Fast\n");
+            }
+            else
+            {
+                uart_puts(pUart, "Slow\n");
+            }
+            
+            int delay = giDelay;
+
+            uint64_t start = time_us_64();
+            uint64_t expectedEnd = start + delay;
+            uint64_t end = start;
+
+            while (expectedEnd > end)
+            {
+                end = time_us_64();
+
+                set_dual_hex_value(&sDigits, iCount);
+
+                sleep_us_high_power(1000);
+            }            
+            bLed = !bLed;
+            iCount++;
         }
     }
     else
@@ -183,6 +212,7 @@ int main()
                         giDelay = 50000;
                     }
                 }
+                sleep_us_high_power(1000);
             }            
             bLed = !bLed;
         }
