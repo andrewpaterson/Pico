@@ -5,13 +5,13 @@
 void S595OutPins::Init(uint uiOutputEnableBPin,
             uint uiShiftPin,
             uint uiStorageLatchPin,
-            uint uiDataInPin,
+            uint uiDataOutPin,
             uint uiMasterResetPin)
 {
     this->uiOutputEnableBPin = uiOutputEnableBPin;
     this->uiShiftPin = uiShiftPin;
     this->uiStorageLatchPin = uiStorageLatchPin;
-    this->uiDataInPin = uiDataInPin;
+    this->uiDataOutPin = uiDataOutPin;
     this->uiMasterResetPin = uiMasterResetPin;
 }
 
@@ -27,8 +27,8 @@ void init_shift(S595OutPins* psPins)
     gpio_init(psPins->uiStorageLatchPin);
     gpio_set_dir(psPins->uiStorageLatchPin, true);
 
-    gpio_init(psPins->uiDataInPin);
-    gpio_set_dir(psPins->uiDataInPin, true);
+    gpio_init(psPins->uiDataOutPin);
+    gpio_set_dir(psPins->uiDataOutPin, true);
 }
 
 
@@ -43,7 +43,7 @@ void shift_out(S595OutPins* psPins, uint16_t uiData)
         uiData = uiData << 1;
   //      sleep_us_high_power(1);
         gpio_put(psPins->uiShiftPin, false);
-        gpio_put(psPins->uiDataInPin, bBit);
+        gpio_put(psPins->uiDataOutPin, bBit);
   //      sleep_us_high_power(1);
         gpio_put(psPins->uiShiftPin, true);
     }
@@ -56,3 +56,21 @@ void shift_out(S595OutPins* psPins, uint16_t uiData)
     gpio_put(psPins->uiStorageLatchPin, false);
 }
 
+void S165InPins::Init(  uint uiLatchPin, 
+                        uint uiClockPin,
+                        uint uiDataInPin,
+                        bool bLatchHigh,
+                        bool bDataInverted,
+                        bool bDataOnClockLow)
+{
+    this->uiLatchPin = uiLatchPin;
+    this->uiClockPin = uiClockPin;
+    this->uiDataInPin = uiDataInPin;
+
+    this->bLatchHigh = bLatchHigh;    
+    this->bDataInverted = bDataInverted;
+    this->bDataOnClockLow = bDataOnClockLow;
+}
+            
+void init_shift(S165InPins* psPins);
+uint shift_in(S165InPins* psPins);

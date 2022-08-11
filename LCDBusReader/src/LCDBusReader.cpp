@@ -138,14 +138,14 @@ int main()
     }
     else
     {
-        giDelay = 1000000;
+        giDelay = 400000;
     }
 
     //parallel_LCD();
     if (!bSlave)
     {
         bool bLed = true;
-        int iCount = 0;
+        int iCount = 0x88;
 
         SDualHexDigitPins   sDigits;
 
