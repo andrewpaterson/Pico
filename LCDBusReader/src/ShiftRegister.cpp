@@ -41,20 +41,17 @@ void shift_out(S595OutPins* psPins, uint16_t uiData)
     {
         bBit = (uiData & 0x8000) == 0x8000;
         uiData = uiData << 1;
-  //      sleep_us_high_power(1);
         gpio_put(psPins->uiShiftPin, false);
         gpio_put(psPins->uiDataOutPin, bBit);
-  //      sleep_us_high_power(1);
         gpio_put(psPins->uiShiftPin, true);
     }
     gpio_put(psPins->uiShiftPin, false);
 
     gpio_put(psPins->uiStorageLatchPin, false);
-//    sleep_us_high_power(1);
     gpio_put(psPins->uiStorageLatchPin, true);
-  //  sleep_us_high_power(1);
     gpio_put(psPins->uiStorageLatchPin, false);
 }
+
 
 void S165InPins::Init(  uint uiLatchPin, 
                         uint uiClockPin,
@@ -71,6 +68,47 @@ void S165InPins::Init(  uint uiLatchPin,
     this->bDataInverted = bDataInverted;
     this->bDataOnClockLow = bDataOnClockLow;
 }
-            
-void init_shift(S165InPins* psPins);
-uint shift_in(S165InPins* psPins);
+
+
+void init_shift(S165InPins* psPins)
+{
+    gpio_init(psPins->uiLatchPin);
+    gpio_set_dir(psPins->uiLatchPin, true);
+
+    gpio_init(psPins->uiClockPin);
+    gpio_set_dir(psPins->uiClockPin, true);
+
+    gpio_init(psPins->uiDataInPin);
+    gpio_set_dir(psPins->uiDataInPin, false);
+}
+
+
+uint16_t shift_in(S165InPins* psPins)
+{
+    int         i;
+    bool        bBit;
+    uint16_t    uiData;
+    int         iSleep;
+
+    iSleep = 3;
+    gpio_put(psPins->uiLatchPin, psPins->bLatchHigh);
+    sleep_us_high_power(iSleep);
+    gpio_put(psPins->uiLatchPin, !psPins->bLatchHigh);
+    sleep_us_high_power(iSleep);
+
+    uiData = 0;
+    for (i = 0; i < 16; i++)
+    {
+        uiData = uiData << 1;
+
+        gpio_put(psPins->uiClockPin, psPins->bDataOnClockLow);
+        sleep_us_high_power(iSleep);
+        gpio_put(psPins->uiClockPin, !psPins->bDataOnClockLow);
+        bBit = gpio_get(psPins->uiDataInPin);
+        uiData = uiData | (bBit ? !psPins->bDataInverted : psPins->bDataInverted);
+        sleep_us_high_power(iSleep);
+    }
+    gpio_put(psPins->uiClockPin, psPins->bDataOnClockLow);
+    return uiData;
+}
+

@@ -113,6 +113,60 @@ void parallel_LCD(void)
     }
 }
 
+int get_snes_button(uint16_t uiButtons)
+{
+    if (uiButtons & 0x8000)
+    {
+        return 1;
+    }
+    if (uiButtons & 0x4000)
+    {
+        return 2;
+    }
+    if (uiButtons & 0x2000)
+    {
+        return 3;
+    }
+    if (uiButtons & 0x1000)
+    {
+        return 4;
+    }
+    if (uiButtons & 0x800)
+    {
+        return 5;
+    }
+    if (uiButtons & 0x400)
+    {
+        return 6;
+    }
+    if (uiButtons & 0x200)
+    {
+        return 7;
+    }
+    if (uiButtons & 0x100)
+    {
+        return 8;
+    }
+    if (uiButtons & 0x80)
+    {
+        return 9;
+    }
+    if (uiButtons & 0x40)
+    {
+        return 10;
+    }
+    if (uiButtons & 0x20)
+    {
+        return 11;
+    }
+    if (uiButtons & 0x10)
+    {
+        return 12;
+    }
+
+    return 0;
+}
+
 int     giDelay;
 
 int main() 
@@ -145,13 +199,14 @@ int main()
     if (!bSlave)
     {
         bool bLed = true;
-        int iCount = 0x88;
 
         SDualHexDigitPins   sDigits;
-
         sDigits.Init(PIN_NOT_SET, PIN_NOT_SET, 13, 12, 11, 10, 9, 8, 7, 6);
-
         init_dual_hex(&sDigits);
+
+        S165InPins sShiftIn;
+        sShiftIn.Init(26, 27, 28, true, true, true);
+        init_shift(&sShiftIn);
 
         for (;;)
         {
@@ -174,13 +229,15 @@ int main()
             while (expectedEnd > end)
             {
                 end = time_us_64();
+                
+                uint16_t uiValue = shift_in(&sShiftIn);
+                int iButton = get_snes_button(uiValue);
 
-                set_dual_hex_value(&sDigits, iCount);
+                set_dual_hex_value(&sDigits, iButton);
 
-                sleep_us_high_power(1000);
+                sleep_us_high_power(30000);
             }            
             bLed = !bLed;
-            iCount++;
         }
     }
     else
