@@ -4,6 +4,7 @@
 #include "LCDDisplay.h"
 #include "ShiftRegister.h"
 #include "ShiftLCDDisplay.h"
+#include "HEXDisplay.h"
 #include "GeneralPins.h"
 #include "UARTComm.h"
 

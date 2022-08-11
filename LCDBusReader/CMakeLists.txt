@@ -10,8 +10,9 @@ pico_sdk_init()
 add_executable(lcd_bus_reader
   src/LCDBusReader.cpp
   src/LCDDisplay.cpp
-  src/ShiftRegister.cpp
   src/GeneralPins.cpp
+  src/HEXDisplay.cpp
+  src/ShiftRegister.cpp
   src/ShiftLCDDisplay.cpp
   src/UARTComm.cpp
 )
