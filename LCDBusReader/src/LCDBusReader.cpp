@@ -7,6 +7,7 @@
 #include "HEXDisplay.h"
 #include "GeneralPins.h"
 #include "UARTComm.h"
+#include "SPIComm.h"
 
 
 void kitt(int iCount, char* szDest)
@@ -173,10 +174,10 @@ int main()
 {
     stdio_init_all();
     gpio_init(25);
-    gpio_set_dir(25, true);
+    gpio_set_dir(25, GPIO_OUT);
 
     gpio_init(2);
-    gpio_set_dir(2, false);
+    gpio_set_dir(2, GPIO_IN);
 
     uart_inst_t* pUart = init_uart(0, 1, 115200 * 4);
     int iIRQ = get_uart_irq(pUart);
@@ -192,12 +193,17 @@ int main()
     }
     else
     {
-        giDelay = 400000;
+        giDelay = 2000000;
     }
 
     //parallel_LCD();
     if (!bSlave)
     {
+        SSPIPins sSPI;
+
+        sSPI.Init(18, 19, 16, 17, false);
+        init_spi(&sSPI);
+
         bool bLed = true;
 
         SDualHexDigitPins   sDigits;
@@ -208,8 +214,11 @@ int main()
         sShiftIn.Init(26, 27, 28, true, true, true);
         init_shift(&sShiftIn);
 
+        write_spi(&sSPI, 0b1000'1011'0000'1100);
+
         for (;;)
         {
+
             gpio_put(25, bLed);
             if (bLed)
             {

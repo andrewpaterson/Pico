@@ -15,6 +15,7 @@ add_executable(lcd_bus_reader
   src/ShiftRegister.cpp
   src/ShiftLCDDisplay.cpp
   src/UARTComm.cpp
+  src/SPIComm.cpp
 )
 
 target_include_directories(lcd_bus_reader PRIVATE
@@ -26,4 +27,5 @@ pico_enable_stdio_uart(lcd_bus_reader 1)
 
 pico_add_extra_outputs(lcd_bus_reader)
 
-target_link_libraries(lcd_bus_reader pico_stdlib)
+target_link_libraries(lcd_bus_reader pico_stdlib hardware_spi)
+

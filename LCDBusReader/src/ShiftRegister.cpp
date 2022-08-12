@@ -22,13 +22,13 @@ void init_shift(S595OutPins* psPins)
     //this->uiMasterResetPin;
 
     gpio_init(psPins->uiShiftPin);
-    gpio_set_dir(psPins->uiShiftPin, true);
+    gpio_set_dir(psPins->uiShiftPin, GPIO_OUT);
 
     gpio_init(psPins->uiStorageLatchPin);
-    gpio_set_dir(psPins->uiStorageLatchPin, true);
+    gpio_set_dir(psPins->uiStorageLatchPin, GPIO_OUT);
 
     gpio_init(psPins->uiDataOutPin);
-    gpio_set_dir(psPins->uiDataOutPin, true);
+    gpio_set_dir(psPins->uiDataOutPin, GPIO_OUT);
 }
 
 
@@ -73,13 +73,13 @@ void S165InPins::Init(  uint uiLatchPin,
 void init_shift(S165InPins* psPins)
 {
     gpio_init(psPins->uiLatchPin);
-    gpio_set_dir(psPins->uiLatchPin, true);
+    gpio_set_dir(psPins->uiLatchPin, GPIO_OUT);
 
     gpio_init(psPins->uiClockPin);
-    gpio_set_dir(psPins->uiClockPin, true);
+    gpio_set_dir(psPins->uiClockPin, GPIO_OUT);
 
     gpio_init(psPins->uiDataInPin);
-    gpio_set_dir(psPins->uiDataInPin, false);
+    gpio_set_dir(psPins->uiDataInPin, GPIO_IN);
 }
 
 
