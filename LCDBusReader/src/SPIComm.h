@@ -19,7 +19,7 @@ struct SSPIPins
 
 
 void init_spi(SSPIPins* psPins);
-void write_spi( SSPIPins* psPins, uint16_t data);
+void write_spi(SSPIPins* psPins, uint16_t data);
 
 
 #endif // __SPI_COMM_H__

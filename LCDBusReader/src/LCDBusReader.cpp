@@ -8,6 +8,7 @@
 #include "GeneralPins.h"
 #include "UARTComm.h"
 #include "SPIComm.h"
+#include "LTC6903.h"
 
 
 void kitt(int iCount, char* szDest)
@@ -214,11 +215,10 @@ int main()
         sShiftIn.Init(26, 27, 28, true, true, true);
         init_shift(&sShiftIn);
 
-        write_spi(&sSPI, 0b1000'1011'0000'1100);
+        put_LTC6903_frequency(&sSPI, 6'500);
 
         for (;;)
         {
-
             gpio_put(25, bLed);
             if (bLed)
             {

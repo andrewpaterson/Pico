@@ -16,6 +16,7 @@ add_executable(lcd_bus_reader
   src/ShiftLCDDisplay.cpp
   src/UARTComm.cpp
   src/SPIComm.cpp
+  src/LTC6903.cpp
 )
 
 target_include_directories(lcd_bus_reader PRIVATE
