@@ -171,14 +171,217 @@ int get_snes_button(uint16_t uiButtons)
 
 int     giDelay;
 
+
+int make_sd_data_mask(  int iSDDat0Pin,
+                        int iSDDat1Pin,
+                        int iSDDat2Pin,
+                        int iSDDat3Pin,
+                        int iData)
+{
+    int iMask = (iData & 0x01 ? (1 << iSDDat0Pin) : 0) | 
+                (iData & 0x02 ? (1 << iSDDat1Pin) : 0) | 
+                (iData & 0x04 ? (1 << iSDDat2Pin) : 0) | 
+                (iData & 0x08 ? (1 << iSDDat3Pin) : 0);
+
+    return iMask;
+}
+
+static uint8_t crc7(uint8_t uiCRC, uint8_t uiData) 
+{
+	uiCRC ^= uiData;
+	for (uint8_t i = 0; i < 8; i++) 
+    {
+		if (uiCRC & 0x80) 
+        {
+            uiCRC ^= 0x89;
+        }
+		uiCRC <<= 1;
+	}
+
+	return uiCRC;
+}
+
+uint8_t crc7(uint8_t* pvData, int iLength)
+{
+	uint8_t uiCRC = 0;
+
+	for (int i = 0; i < iLength; i++) 
+    {
+        uiCRC = crc7(uiCRC, pvData[i]);
+    }
+
+	return uiCRC >> 1;
+}
+
+static uint16_t crc16(uint16_t uiCRC, uint8_t uiData) 
+{
+	uiCRC  = (uint8_t)(uiCRC >> 8) | (uiCRC << 8);
+	uiCRC ^= uiData;
+	uiCRC ^= (uint8_t)(uiCRC & 0xff) >> 4;
+	uiCRC ^= (uiCRC << 8) << 4;
+	uiCRC ^= ((uiCRC & 0xff) << 4) << 1;
+
+	return uiCRC;
+}
+
+uint16_t crc16(uint8_t* pvData, uint32_t len) 
+{
+	uint16_t uiCRC = 0;
+
+	for (int i = 0; i < len; i++) 
+    {
+        uiCRC = crc16(uiCRC, pvData[i]);
+    }
+
+	return uiCRC;
+}
+
+void build_command(uint8_t* pvDest, int iCommand, int iArgument)
+{
+    pvDest[0] = 0x40 | (iCommand & 0x3f);  //0..1...command[5..0]...
+    pvDest[1] = (iArgument >> 24) & 0xff;  //argument[31..24]...
+    pvDest[2] = (iArgument >> 16) & 0xff;  //argument[23..16]...
+    pvDest[3] = (iArgument >> 8) & 0xff;   //argument[15..8]...
+    pvDest[4] = iArgument & 0xff;          //argument[7..0]...
+    uint8_t uiCRC = crc7(pvDest, 5);
+    pvDest[5] = (uiCRC << 1) | 1;
+}
+
+bool send_command(uint8_t* pvDest, int iSDClkPin, int iSDCmdPin)
+{
+    gpio_set_dir(iSDCmdPin, GPIO_OUT);
+    gpio_put(iSDClkPin, false);
+    gpio_put(iSDCmdPin, true);
+    sleep_us_high_power(5);
+    for (int iByte = 0; iByte <= 5; iByte++)
+    {
+        uint8_t uiByte = pvDest[iByte];
+        for (int iBit = 7; iBit >=0; iBit--)
+        {
+            bool bBit = uiByte & 0x80;
+            uiByte <<= 1;
+            gpio_put(iSDClkPin, false);
+            gpio_put(iSDCmdPin, bBit);
+            sleep_us_high_power(5);
+            gpio_put(iSDClkPin, true);
+            sleep_us_high_power(5);
+        }
+    }
+}
+
+bool receive_response(int iSDClkPin, int iSDCmdPin)
+{
+    if (gpio_get_dir(iSDCmdPin) == GPIO_OUT)
+    {
+        gpio_set_dir(iSDCmdPin, GPIO_IN);
+    }
+
+    for (int i = 0; i < 200; i++)
+    {
+        gpio_put(iSDClkPin, false);
+        sleep_us_high_power(5);
+        gpio_put(iSDClkPin, true);
+        sleep_us_high_power(5);
+    }
+}
+
+void sd_clock_tick(int iSDClkPin, int iSDCmdPin, int iFullCycles)
+{
+    if (gpio_get_dir(iSDCmdPin) == GPIO_IN)
+    {
+        gpio_set_dir(iSDCmdPin, GPIO_OUT);
+    }
+
+    gpio_put(iSDCmdPin, true);
+
+    for (int i = 0; i < iFullCycles; i++)
+    {
+        gpio_put(iSDClkPin, false);
+        sleep_us_high_power(5);
+        gpio_put(iSDClkPin, true);
+        sleep_us_high_power(5);
+    }
+}
+
+bool sd_go_idle(int iSDClkPin, int iSDCmdPin, int iSDDat3Pin, bool bSDMode)
+{
+    uint8_t aCommand[6];
+
+    build_command(aCommand, 0, 0);
+    
+    gpio_set_dir(iSDDat3Pin, GPIO_OUT);
+    gpio_put(iSDDat3Pin, !bSDMode);
+
+    sd_clock_tick(iSDClkPin, iSDCmdPin, 8);
+
+    send_command(aCommand, iSDClkPin, iSDCmdPin);
+
+    gpio_set_dir(iSDDat3Pin, GPIO_IN);
+
+    sd_clock_tick(iSDClkPin, iSDCmdPin, 8);
+
+    return true;
+}
+
+bool sd_interface_condition(int iSDClkPin, int iSDCmdPin)
+{
+    uint8_t aCommand[6];
+
+    build_command(aCommand, 8, 0x000001AA);
+    send_command(aCommand, iSDClkPin, iSDCmdPin);
+
+    receive_response(iSDClkPin, iSDCmdPin);
+}
+
 int main() 
 {
     stdio_init_all();
     gpio_init(25);
     gpio_set_dir(25, GPIO_OUT);
 
-    gpio_init(2);
-    gpio_set_dir(2, GPIO_IN);
+
+    int iSDDat0Pin = 2;
+    int iSDDat1Pin = 3;
+    int iSDDat2Pin = 4;
+    int iSDDat3Pin = 5;
+
+    int iSDClkPin = 6;
+    int iSDCmdPin = 7;
+
+    gpio_init(iSDClkPin);
+    gpio_set_dir(iSDClkPin, GPIO_OUT);
+
+    gpio_init(iSDCmdPin);
+    gpio_set_dir(iSDCmdPin, GPIO_OUT);
+
+    int iSDMask = make_sd_data_mask(iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin, 0xf);
+
+    gpio_init_mask(iSDMask);
+    gpio_set_dir_in_masked(iSDMask);
+
+    sleep_us_high_power(400000);
+
+    sd_go_idle(iSDClkPin, iSDCmdPin, iSDDat3Pin, false);
+    sd_interface_condition(iSDClkPin, iSDCmdPin);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    int iSlaveIO = 15;
+
+    gpio_init(iSlaveIO);
+    gpio_set_dir(iSlaveIO, GPIO_IN);
 
     uart_inst_t* pUart = init_uart(0, 1, 115200 * 4);
     int iIRQ = get_uart_irq(pUart);
@@ -187,7 +390,7 @@ int main()
     irq_set_enabled(iIRQ, true);
     uart_set_irq_enables(pUart, true, false);
 
-    bool bSlave = gpio_get(2);
+    bool bSlave = gpio_get(iSlaveIO);
     if (bSlave)
     {
         giDelay = 1000000;
@@ -197,25 +400,9 @@ int main()
         giDelay = 2000000;
     }
 
-    //parallel_LCD();
     if (!bSlave)
     {
-        SSPIPins sSPI;
-
-        sSPI.Init(18, 19, 16, 17, false);
-        init_spi(&sSPI);
-
         bool bLed = true;
-
-        SDualHexDigitPins   sDigits;
-        sDigits.Init(PIN_NOT_SET, PIN_NOT_SET, 13, 12, 11, 10, 9, 8, 7, 6);
-        init_dual_hex(&sDigits);
-
-        S165InPins sShiftIn;
-        sShiftIn.Init(26, 27, 28, true, true, true);
-        init_shift(&sShiftIn);
-
-        put_LTC6903_frequency(&sSPI, 6'500);
 
         for (;;)
         {
@@ -238,13 +425,6 @@ int main()
             while (expectedEnd > end)
             {
                 end = time_us_64();
-                
-                uint16_t uiValue = shift_in(&sShiftIn);
-                int iButton = get_snes_button(uiValue);
-
-                set_dual_hex_value(&sDigits, iButton);
-
-                sleep_us_high_power(30000);
             }            
             bLed = !bLed;
         }
