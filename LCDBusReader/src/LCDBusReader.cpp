@@ -269,19 +269,56 @@ bool send_command(uint8_t* pvDest, int iSDClkPin, int iSDCmdPin)
     }
 }
 
-bool receive_response(int iSDClkPin, int iSDCmdPin)
+bool read_response(int iSDClkPin, int iSDCmdPin, int iExpectedBytes, uint8_t* pvResponse)
+{
+    int iBit = 6;
+    for (int iByte = 0; iByte < iExpectedBytes; iByte++)
+    {
+        pvResponse[iByte] = 0;
+        for (; iBit >= 0; iBit--)
+        {
+            pvResponse[iByte] <<= 1;
+            gpio_put(iSDClkPin, false);
+            sleep_us_high_power(5);
+            gpio_put(iSDClkPin, true);
+            bool bBit = gpio_get(iSDCmdPin);
+            sleep_us_high_power(5);
+            pvResponse[iByte] |= bBit;
+        }
+        iBit = 7;
+    }
+}
+
+bool receive_response(int iSDClkPin, int iSDCmdPin, uint8_t* pvResponse)
 {
     if (gpio_get_dir(iSDCmdPin) == GPIO_OUT)
     {
         gpio_set_dir(iSDCmdPin, GPIO_IN);
     }
 
+    bool bCardTransmit = false;
     for (int i = 0; i < 200; i++)
     {
         gpio_put(iSDClkPin, false);
         sleep_us_high_power(5);
         gpio_put(iSDClkPin, true);
+        bool bBit = gpio_get(iSDCmdPin);
         sleep_us_high_power(5);
+        if (!bBit)
+        {
+            bCardTransmit = true;
+            break;
+        }
+
+    }
+
+    if (bCardTransmit)
+    {
+        return read_response(iSDClkPin, iSDCmdPin, 6, pvResponse);
+    }
+    else
+    {
+        return false;
     }
 }
 
@@ -326,11 +363,13 @@ bool sd_go_idle(int iSDClkPin, int iSDCmdPin, int iSDDat3Pin, bool bSDMode)
 bool sd_interface_condition(int iSDClkPin, int iSDCmdPin)
 {
     uint8_t aCommand[6];
+    uint8_t aResponse[6];
+    bool bResult;
 
     build_command(aCommand, 8, 0x000001AA);
     send_command(aCommand, iSDClkPin, iSDCmdPin);
 
-    receive_response(iSDClkPin, iSDCmdPin);
+    bResult = receive_response(iSDClkPin, iSDCmdPin, aResponse);
 }
 
 int main() 
