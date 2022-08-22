@@ -309,7 +309,6 @@ bool receive_response(int iSDClkPin, int iSDCmdPin, uint8_t* pvResponse)
             bCardTransmit = true;
             break;
         }
-
     }
 
     if (bCardTransmit)
@@ -322,14 +321,17 @@ bool receive_response(int iSDClkPin, int iSDCmdPin, uint8_t* pvResponse)
     }
 }
 
-void sd_clock_tick(int iSDClkPin, int iSDCmdPin, int iFullCycles)
+void sd_clock_tick(int iSDClkPin, int iSDCmdPin, int iFullCycles, int iCmdDir)
 {
-    if (gpio_get_dir(iSDCmdPin) == GPIO_IN)
+    if (gpio_get_dir(iSDCmdPin) != iCmdDir)
     {
-        gpio_set_dir(iSDCmdPin, GPIO_OUT);
+        gpio_set_dir(iSDCmdPin, iCmdDir);
     }
 
-    gpio_put(iSDCmdPin, true);
+    if (iCmdDir == GPIO_OUT)
+    {
+        gpio_put(iSDCmdPin, true);
+    }
 
     for (int i = 0; i < iFullCycles; i++)
     {
@@ -340,7 +342,7 @@ void sd_clock_tick(int iSDClkPin, int iSDCmdPin, int iFullCycles)
     }
 }
 
-bool sd_go_idle(int iSDClkPin, int iSDCmdPin, int iSDDat3Pin, bool bSDMode)
+void sd_cmd0_go_idle(int iSDClkPin, int iSDCmdPin, int iSDDat3Pin, bool bSDMode)
 {
     uint8_t aCommand[6];
 
@@ -349,18 +351,33 @@ bool sd_go_idle(int iSDClkPin, int iSDCmdPin, int iSDDat3Pin, bool bSDMode)
     gpio_set_dir(iSDDat3Pin, GPIO_OUT);
     gpio_put(iSDDat3Pin, !bSDMode);
 
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 8);
+    sd_clock_tick(iSDClkPin, iSDCmdPin, 8, GPIO_OUT);
 
     send_command(aCommand, iSDClkPin, iSDCmdPin);
 
     gpio_set_dir(iSDDat3Pin, GPIO_IN);
 
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 8);
-
-    return true;
+    sd_clock_tick(iSDClkPin, iSDCmdPin, 8, GPIO_OUT);
 }
 
-bool sd_interface_condition(int iSDClkPin, int iSDCmdPin)
+
+struct SSDResponseR1
+{
+    uint8_t uiCmd;  //Bit   7   : 0 (Start transmit)
+                    //      6   : 0 (Card transmit)
+                    //      5..0: cmd
+
+    uint8_t uiStatus3;
+    uint8_t uiStatus2;
+    uint8_t uiStatus1;
+    uint8_t uiStatus0;
+
+    uint8_t uiCrc7;  //Bit  6..1: CRC7
+                     //Bit  0   : 1 (Stop transmit)
+};
+
+
+bool sd_cmd8_interface_condition(int iSDClkPin, int iSDCmdPin)
 {
     uint8_t aCommand[6];
     uint8_t aResponse[6];
@@ -368,8 +385,70 @@ bool sd_interface_condition(int iSDClkPin, int iSDCmdPin)
 
     build_command(aCommand, 8, 0x000001AA);
     send_command(aCommand, iSDClkPin, iSDCmdPin);
+    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
 
     bResult = receive_response(iSDClkPin, iSDCmdPin, aResponse);
+    if (bResult)
+    {
+        SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
+        if ((pResponse->uiCmd == 8) &&
+            (pResponse->uiStatus1 == 1) &&
+            (pResponse->uiStatus0 == 0xAA) &&
+            (pResponse->uiCrc7 == 0x13))
+        {
+            sd_clock_tick(iSDClkPin, iSDCmdPin, 8, GPIO_OUT);
+            return true;
+        }
+    }
+    return false;
+}
+
+
+void sd_cmd55_application_specific(int iSDClkPin, int iSDCmdPin, u_int16_t uiRCA)
+{
+    uint8_t aCommand[6];
+    uint8_t aResponse[6];
+
+    build_command(aCommand, 55, uiRCA << 1);
+    send_command(aCommand, iSDClkPin, iSDCmdPin);
+    sd_clock_tick(iSDClkPin, iSDCmdPin, 8, GPIO_OUT);
+
+    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+    receive_response(iSDClkPin, iSDCmdPin, aResponse);
+}
+
+
+bool sd_cmd41_operating_condition(int iSDClkPin, int iSDCmdPin)
+{
+    uint8_t aCommand[6];
+    uint8_t aResponse[6];
+    bool bResult;
+
+    build_command(aCommand, 41, 0x40100000);
+    send_command(aCommand, iSDClkPin, iSDCmdPin);
+    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+
+    bResult = receive_response(iSDClkPin, iSDCmdPin, aResponse);
+    if (bResult)
+    {
+        SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
+        if ((pResponse->uiCmd == 8) &&
+            (pResponse->uiStatus1 == 1) &&
+            (pResponse->uiStatus0 == 0xAA) &&
+            (pResponse->uiCrc7 == 0x13))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+bool sd_acmd41(int iSDClkPin, int iSDCmdPin, u_int16_t uiRCA)
+{
+    sd_cmd55_application_specific(iSDClkPin, iSDCmdPin, 0);
+
+    sd_cmd41_operating_condition(iSDClkPin, iSDCmdPin);
 }
 
 int main() 
@@ -400,13 +479,12 @@ int main()
 
     sleep_us_high_power(400000);
 
-    sd_go_idle(iSDClkPin, iSDCmdPin, iSDDat3Pin, false);
-    sd_interface_condition(iSDClkPin, iSDCmdPin);
-
-
-
-
-
+    sd_cmd0_go_idle(iSDClkPin, iSDCmdPin, iSDDat3Pin, false);
+    bool bResult = sd_cmd8_interface_condition(iSDClkPin, iSDCmdPin);
+    if (bResult)
+    {
+        sd_acmd41(iSDClkPin, iSDCmdPin, 0);
+    }
 
 
 
