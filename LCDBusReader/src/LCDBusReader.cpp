@@ -574,7 +574,6 @@ bool sd_cmd2_send_cid_numbers(int iSDClkPin, int iSDCmdPin, SSDCID* pCID)
     uint8_t aCommand[6];
     uint8_t aResponse[17];
     bool bResult;
-    uint8_t uiExpectedCRC;
 
     build_command(aCommand, 2, 0);
     send_command(aCommand, iSDClkPin, iSDCmdPin);
@@ -586,7 +585,7 @@ bool sd_cmd2_send_cid_numbers(int iSDClkPin, int iSDCmdPin, SSDCID* pCID)
         SSDResponseR2* pResponse = (SSDResponseR2*)aResponse;
         if (pResponse->uiReserved == 0x3F)
         {
-            uiExpectedCRC = crc7(&aResponse[1], 15);
+            uint8_t uiExpectedCRC = crc7(&aResponse[1], 15);
             uiExpectedCRC <<= 1;
             uiExpectedCRC |= 1;
             if (pResponse->uiCrc7 == uiExpectedCRC)
@@ -605,6 +604,91 @@ bool sd_cmd2_send_cid_numbers(int iSDClkPin, int iSDCmdPin, SSDCID* pCID)
 
                 return true;
             }
+        }
+    }
+    return false;
+}
+
+
+struct SSDResponseR6
+{
+    uint8_t uiCmd;  //Bit 7   : 0 (Start transmit)
+                    //Bit 6   : 0 (Card transmit)
+                    //Bit 5..0: cmd
+
+    uint8_t uiRCA1;
+    uint8_t uiRCA0;
+    uint8_t uiStatus1;  
+    uint8_t uiStatus0;
+
+    uint8_t uiCrc7;  //Bit 6..1: CRC7
+                     //Bit 0   : 1 (Stop transmit)
+};
+
+
+enum ESDState
+{
+    ESD_Idle,
+    ESD_Ready,
+    ESD_Identify,
+    ESD_StandBy,
+    ESD_Transmit,
+    ESD_Data,
+    ESD_Receive,
+    ESD_Program,
+    ESD_Disabled,
+
+    ESD_Reserved
+};
+
+struct SSDR6Status
+{
+    bool        bPreviousCRCFailed;
+    bool        bIllegalCommand;
+    bool        bGeneralError;
+
+    ESDState    eState;
+
+    bool        bReadyForData;
+    bool        bExtensionFunctionEvent;
+    bool        bApplicationCommandExpected;
+    bool        bAuthenticationError;
+};
+
+
+bool sd_cmd3_publish_relative_address(int iSDClkPin, int iSDCmdPin, uint16_t* puiAddress, SSDR6Status* pStatus)
+{
+    uint8_t aCommand[6];
+    uint8_t aResponse[6];
+    bool bResult;
+
+    build_command(aCommand, 3, 0);
+    send_command(aCommand, iSDClkPin, iSDCmdPin);
+    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+
+    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, aResponse);
+    if (bResult)
+    {
+        SSDResponseR6* pResponse = (SSDResponseR6*)aResponse;
+        if (pResponse->uiCmd == 3)
+        {
+            uint8_t uiExpectedCRC = crc7(aResponse, 5);
+            uiExpectedCRC <<= 1;
+            uiExpectedCRC |= 1;
+            if (pResponse->uiCrc7 == uiExpectedCRC)
+            {
+                *puiAddress = *((uint16_t*)&pResponse->uiRCA1);
+                pStatus->bPreviousCRCFailed = (pResponse->uiStatus1 & 0x80) == 0x80;
+                pStatus->bIllegalCommand = (pResponse->uiStatus1 & 0x40) == 0x40;
+                pStatus->bGeneralError = (pResponse->uiStatus1 & 0x20) == 0x20;
+                pStatus->eState = (ESDState)((pResponse->uiStatus1 & 0x1E) >> 1);
+                
+                pStatus->bReadyForData = (pResponse->uiStatus0 & 0x100) == 0x100;
+                pStatus->bExtensionFunctionEvent = (pResponse->uiStatus0 & 0x40) == 0x40;
+                pStatus->bApplicationCommandExpected = (pResponse->uiStatus0 & 0x20) == 0x20;
+                pStatus->bAuthenticationError = (pResponse->uiStatus0 & 0x8) == 0x8;
+                return true;
+            }   
         }
     }
     return false;
@@ -651,17 +735,25 @@ int main()
     gpio_set_dir_in_masked(iSDMask);
 
 
+    SSDOCR      sOCR;
+    SSDCID      sCID;
+    SSDR6Status sStatus;
+    uint16_t    uiAddress;
+    bool        bResult;
+
     sd_cmd0_go_idle(iSDClkPin, iSDCmdPin, iSDDat3Pin, false);
 
-    SSDOCR  sOCR;
-    SSDCID  sCID;
-    bool bResult = sd_cmd8_interface_condition(iSDClkPin, iSDCmdPin);
+    bResult = sd_cmd8_interface_condition(iSDClkPin, iSDCmdPin);
     if (bResult)
     {
         bResult = sd_acmd41_application_operating_condition(iSDClkPin, iSDCmdPin, 0, &sOCR);
         if (bResult)
         {
             bResult = sd_cmd2_send_cid_numbers(iSDClkPin, iSDCmdPin, &sCID);
+            if (bResult)
+            {
+                bResult = sd_cmd3_publish_relative_address(iSDClkPin, iSDCmdPin, &uiAddress, &sStatus);
+            }
         }
         else
         {
