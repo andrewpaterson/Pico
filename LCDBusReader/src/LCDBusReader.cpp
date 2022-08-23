@@ -310,7 +310,7 @@ void sd_clock_tick(int iSDClkPin, int iSDCmdPin, int iFullCycles, int iCmdDir)
     }
 }
 
-bool receive_response(int iSDClkPin, int iSDCmdPin, uint8_t* pvResponse)
+bool receive_response(int iSDClkPin, int iSDCmdPin, int iExpectedBytes, uint8_t* pvResponse)
 {
     if (gpio_get_dir(iSDCmdPin) == GPIO_OUT)
     {
@@ -334,7 +334,7 @@ bool receive_response(int iSDClkPin, int iSDCmdPin, uint8_t* pvResponse)
 
     if (bCardTransmit)
     {
-        bool bValidResponse = read_response(iSDClkPin, iSDCmdPin, 6, pvResponse);
+        bool bValidResponse = read_response(iSDClkPin, iSDCmdPin, iExpectedBytes, pvResponse);
         if (bValidResponse)
         {
             sd_clock_tick(iSDClkPin, iSDCmdPin, 8, GPIO_OUT);
@@ -356,7 +356,7 @@ void sd_cmd0_go_idle(int iSDClkPin, int iSDCmdPin, int iSDDat3Pin, bool bSDMode)
     gpio_set_dir(iSDDat3Pin, GPIO_OUT);
     gpio_put(iSDDat3Pin, !bSDMode);
 
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 8, GPIO_OUT);
+    sd_clock_tick(iSDClkPin, iSDCmdPin, 74, GPIO_OUT);
 
     send_command(aCommand, iSDClkPin, iSDCmdPin);
 
@@ -392,7 +392,7 @@ bool sd_cmd8_interface_condition(int iSDClkPin, int iSDCmdPin)
     send_command(aCommand, iSDClkPin, iSDCmdPin);
     sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
 
-    bResult = receive_response(iSDClkPin, iSDCmdPin, aResponse);
+    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, aResponse);
     if (bResult)
     {
         SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
@@ -419,7 +419,7 @@ bool sd_cmd55_application_specific(int iSDClkPin, int iSDCmdPin, u_int16_t uiRCA
 
     sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
 
-    bResult = receive_response(iSDClkPin, iSDCmdPin, aResponse);
+    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, aResponse);
     if (bResult)
     {   
         SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
@@ -433,6 +433,7 @@ bool sd_cmd55_application_specific(int iSDClkPin, int iSDCmdPin, u_int16_t uiRCA
     }
     return false;
 }
+
 
 struct SSDResponseR3
 {
@@ -449,6 +450,7 @@ struct SSDResponseR3
                           //Bit 0   : 1 (Stop transmit)
 };
 
+
 bool sd_cmd41_operating_condition(int iSDClkPin, int iSDCmdPin, uint8_t* paResponse)
 {
     uint8_t aCommand[6];
@@ -458,7 +460,7 @@ bool sd_cmd41_operating_condition(int iSDClkPin, int iSDCmdPin, uint8_t* paRespo
     send_command(aCommand, iSDClkPin, iSDCmdPin);
     sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
 
-    bResult = receive_response(iSDClkPin, iSDCmdPin, paResponse);
+    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, paResponse);
     if (bResult)
     {
         SSDResponseR3* pResponse = (SSDResponseR3*)paResponse;
@@ -532,6 +534,83 @@ bool sd_acmd41_application_operating_condition(int iSDClkPin, int iSDCmdPin, u_i
     return false;
 }
 
+
+struct SSDResponseR2
+{
+    uint8_t     uiReserved; //Bit 7   : 0 (Start transmit)
+                            //Bit 6   : 0 (Card transmit)
+                            //Bit 5..0: 0b111111
+
+    uint8_t     uiManufacturerID;
+    uint16_t    uiApplicationID;
+    char        acProductName[5];
+    uint8_t     uiProductRevision;
+    uint8_t     auiProductSerialNumber[4];
+
+    uint16_t    uiManufactureDate;  //Bit 15..12: 0bXXXX
+                                    //Bit 11..4 : Year (+2000)
+                                    //Bit 3..0  : Month
+
+    uint8_t uiCrc7;  //Bit 6..1: CRC7
+                     //Bit 0   : 1 (Stop transmit)
+};
+
+
+struct SSDCID
+{
+    uint8_t     uiManufacturerID;
+    uint16_t    uiApplicationID;
+    char        szProductName[6];
+    uint8_t     uiProductRevision;
+    int32_t     iProductSerialNumber;
+
+    uint16_t    uiManufactureYear;
+    uint8_t     uiManufactureMonth;
+};
+
+
+bool sd_cmd2_send_cid_numbers(int iSDClkPin, int iSDCmdPin, SSDCID* pCID)
+{
+    uint8_t aCommand[6];
+    uint8_t aResponse[17];
+    bool bResult;
+    uint8_t uiExpectedCRC;
+
+    build_command(aCommand, 2, 0);
+    send_command(aCommand, iSDClkPin, iSDCmdPin);
+    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+
+    bResult = receive_response(iSDClkPin, iSDCmdPin, 17, aResponse);
+    if (bResult)
+    {
+        SSDResponseR2* pResponse = (SSDResponseR2*)aResponse;
+        if (pResponse->uiReserved == 0x3F)
+        {
+            uiExpectedCRC = crc7(&aResponse[1], 15);
+            uiExpectedCRC <<= 1;
+            uiExpectedCRC |= 1;
+            if (pResponse->uiCrc7 == uiExpectedCRC)
+            {
+                pCID->uiManufacturerID = pResponse->uiManufacturerID;
+                pCID->uiApplicationID = pResponse->uiApplicationID;
+                pCID->uiProductRevision = pResponse->uiProductRevision;
+                
+                memcpy(pCID->szProductName, pResponse->acProductName, 5);
+                pCID->szProductName[5] = '\0';
+                
+                pCID->iProductSerialNumber = *((int*)pResponse->auiProductSerialNumber);
+
+                pCID->uiManufactureYear = ((pResponse->uiManufactureDate >> 4) & 0xFF) + 2000;
+                pCID->uiManufactureMonth =  pResponse->uiManufactureDate & 0xF;
+
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+
 void blink_led(int iMicrosecondDelay)
 {
     bool bLed = true;
@@ -575,13 +654,14 @@ int main()
     sd_cmd0_go_idle(iSDClkPin, iSDCmdPin, iSDDat3Pin, false);
 
     SSDOCR  sOCR;
+    SSDCID  sCID;
     bool bResult = sd_cmd8_interface_condition(iSDClkPin, iSDCmdPin);
     if (bResult)
     {
-        bool bResult = sd_acmd41_application_operating_condition(iSDClkPin, iSDCmdPin, 0, &sOCR);
+        bResult = sd_acmd41_application_operating_condition(iSDClkPin, iSDCmdPin, 0, &sOCR);
         if (bResult)
         {
-            
+            bResult = sd_cmd2_send_cid_numbers(iSDClkPin, iSDCmdPin, &sCID);
         }
         else
         {
