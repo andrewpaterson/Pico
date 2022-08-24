@@ -269,6 +269,7 @@ bool send_command(uint8_t* pvDest, int iSDClkPin, int iSDCmdPin)
     }
 }
 
+
 bool read_response(int iSDClkPin, int iSDCmdPin, int iExpectedBytes, uint8_t* pvResponse)
 {
     int iBit = 6;
@@ -287,7 +288,9 @@ bool read_response(int iSDClkPin, int iSDCmdPin, int iExpectedBytes, uint8_t* pv
         }
         iBit = 7;
     }
+    return true;
 }
+
 
 void sd_clock_tick(int iSDClkPin, int iSDCmdPin, int iFullCycles, int iCmdDir)
 {
@@ -309,6 +312,7 @@ void sd_clock_tick(int iSDClkPin, int iSDCmdPin, int iFullCycles, int iCmdDir)
         sleep_us_high_power(5);
     }
 }
+
 
 bool receive_response(int iSDClkPin, int iSDCmdPin, int iExpectedBytes, uint8_t* pvResponse)
 {
@@ -346,6 +350,7 @@ bool receive_response(int iSDClkPin, int iSDCmdPin, int iExpectedBytes, uint8_t*
         return false;
     }
 }
+
 
 void sd_cmd0_go_idle(int iSDClkPin, int iSDCmdPin, int iSDDat3Pin, bool bSDMode)
 {
@@ -1015,6 +1020,91 @@ bool sd_cmd9_send_csd(int iSDClkPin, int iSDCmdPin, uint16_t uiAddress, SSDCSD* 
 }
 
 
+struct SDCardStatus
+{
+    bool        bOutOfRange;
+    bool        bAddressError;
+    bool        bBlockLengthError;
+    bool        bSequenceEraseError;
+    bool        bWriteBlockEraseError;
+    bool        bWriteProtectedViolation;
+    bool        bCardIsLocked;
+    bool        bLockOrUnlockFailed;
+    bool        bPreviousCRCFailed;
+    bool        bIllegalCommand;
+    bool        bInternalECCFailed;
+    bool        bInternalError;
+    bool        bGeneralError;
+
+    bool        bCSDOverwriteError;
+    bool        bErasePartiallyFailed;
+    bool        bInternalECCDisabled;
+    bool        bEraseNotExecuted;
+
+    ESDState    eState;
+
+    bool        bReadyForData;
+    bool        bExtensionFunctionEvent;
+    bool        bApplicationCommandExpected;
+    bool        bAuthenticationError;
+};
+
+
+bool sd_cmd7_select_or_deselect_card(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, uint16_t uiAddress, SDCardStatus* pStatus)
+{
+    uint8_t aCommand[6];
+    uint8_t aResponse[6];
+    bool    bResult;
+
+    build_command(aCommand, 7, address_argument(uiAddress));
+    send_command(aCommand, iSDClkPin, iSDCmdPin);
+    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+
+    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, aResponse);
+    if (bResult)
+    {
+        SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
+        if (pResponse->uiCmd == 7)
+        {
+            uint8_t uiExpectedCRC = crc7(aResponse, 5);
+            uiExpectedCRC <<= 1;
+            uiExpectedCRC |= 1;
+            if (pResponse->uiCrc7 == uiExpectedCRC)
+            {
+                pStatus->bOutOfRange = (pResponse->uiStatus3 & 0x80) == 0x80;
+                pStatus->bAddressError = (pResponse->uiStatus3 & 0x40) == 0x40;
+                pStatus->bBlockLengthError = (pResponse->uiStatus3 & 0x20) == 0x20;
+                pStatus->bSequenceEraseError = (pResponse->uiStatus3 & 0x10) == 0x10;
+                pStatus->bWriteBlockEraseError = (pResponse->uiStatus3 & 0x8) == 0x8;
+                pStatus->bWriteProtectedViolation = (pResponse->uiStatus3 & 0x4) == 0x4;
+                pStatus->bCardIsLocked = (pResponse->uiStatus3 & 0x2) == 0x2;
+                pStatus->bLockOrUnlockFailed = (pResponse->uiStatus3 & 0x1) == 0x1;
+                pStatus->bPreviousCRCFailed = (pResponse->uiStatus2 & 0x80) == 0x80;
+                pStatus->bIllegalCommand = (pResponse->uiStatus2 & 0x40) == 0x40;
+                pStatus->bInternalECCFailed = (pResponse->uiStatus2 & 0x20) == 0x20;
+                pStatus->bInternalError = (pResponse->uiStatus2 & 0x10) == 0x10;
+                pStatus->bGeneralError = (pResponse->uiStatus2 & 0x8) == 0x8;
+
+                pStatus->bCSDOverwriteError = (pResponse->uiStatus2 & 0x1) == 0x1;
+                pStatus->bErasePartiallyFailed = (pResponse->uiStatus1 & 0x80) == 0x80;
+                pStatus->bInternalECCDisabled = (pResponse->uiStatus1 & 0x40) == 0x40;
+                pStatus->bEraseNotExecuted = (pResponse->uiStatus1 & 0x20) == 0x20;
+
+                pStatus->eState = (ESDState)((pResponse->uiStatus1 & 0x1E) >> 1);
+
+                pStatus->bReadyForData = (pResponse->uiStatus1 & 0x1) == 0x1;
+                pStatus->bExtensionFunctionEvent = (pResponse->uiStatus0 & 0x40) == 0x40;
+                pStatus->bApplicationCommandExpected = (pResponse->uiStatus0 & 0x20) == 0x20;
+                pStatus->bAuthenticationError = (pResponse->uiStatus0 & 0x8) == 0x8;
+
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+
 void blink_led(int iMicrosecondDelay)
 {
     bool bLed = true;
@@ -1055,12 +1145,13 @@ int main()
     gpio_set_dir_in_masked(iSDMask);
 
 
-    SSDOCR      sOCR;
-    SSDCID      sCID;
-    SSDCSD      sCSD;
-    SSDR6Status sStatus;
-    uint16_t    uiAddress;
-    bool        bResult;
+    SSDOCR          sOCR;
+    SSDCID          sCID;
+    SSDCSD          sCSD;
+    SSDR6Status     sR6Status;
+    uint16_t        uiAddress;
+    bool            bResult;
+    SDCardStatus    sStatus;
 
     sd_cmd0_go_idle(iSDClkPin, iSDCmdPin, iSDDat3Pin, false);
 
@@ -1073,12 +1164,18 @@ int main()
             bResult = sd_cmd2_send_cid(iSDClkPin, iSDCmdPin, &sCID);
             if (bResult)
             {
-                bResult = sd_cmd3_publish_relative_address(iSDClkPin, iSDCmdPin, &uiAddress, &sStatus);
+                bResult = sd_cmd3_publish_relative_address(iSDClkPin, iSDCmdPin, &uiAddress, &sR6Status);
                 if (bResult)
                 {
                     bResult = sd_cmd9_send_csd(iSDClkPin, iSDCmdPin, uiAddress, &sCSD);
-
-                    //ACMD6 - Wide bus mode.
+                    if (bResult)
+                    {
+                        bResult = sd_cmd7_select_or_deselect_card(iSDClkPin, iSDCmdPin, iSDDat0Pin, uiAddress, &sStatus);
+                        if (bResult)
+                        {
+                            //ACMD6 - Wide bus mode.
+                        }
+                    }
                 }
             }
         }
