@@ -1050,7 +1050,7 @@ struct SDCardStatus
 };
 
 
-bool sd_cmd7_select_or_deselect_card(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, uint16_t uiAddress, SDCardStatus* pStatus)
+bool sd_cmd7_select_or_deselect_card(int iSDClkPin, int iSDCmdPin, uint16_t uiAddress, SDCardStatus* pStatus)
 {
     uint8_t aCommand[6];
     uint8_t aResponse[6];
@@ -1105,6 +1105,95 @@ bool sd_cmd7_select_or_deselect_card(int iSDClkPin, int iSDCmdPin, int iSDDat0Pi
 }
 
 
+bool read_data(int iSDClkPin, int iSDDat0Pin, int iExpectedBytes, uint8_t* pvData)
+{
+    int iBit = 6;
+    for (int iByte = 0; iByte < iExpectedBytes; iByte++)
+    {
+        pvData[iByte] = 0;
+        for (; iBit >= 0; iBit--)
+        {
+            pvData[iByte] <<= 1;
+            gpio_put(iSDClkPin, false);
+            sleep_us_high_power(5);
+            gpio_put(iSDClkPin, true);
+            bool bBit = gpio_get(iSDDat0Pin);
+            sleep_us_high_power(5);
+            pvData[iByte] |= bBit;
+        }
+        iBit = 7;
+    }
+    return true;
+}
+
+
+bool receive_data(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iExpectedBytes, uint8_t* pvData)
+{
+    if (gpio_get_dir(iSDDat0Pin) == GPIO_OUT)
+    {
+        gpio_set_dir(iSDDat0Pin, GPIO_IN);
+    }
+
+    bool bCardTransmit = false;
+    for (int i = 0; i < 200; i++)
+    {
+        gpio_put(iSDClkPin, false);
+        sleep_us_high_power(5);
+        gpio_put(iSDClkPin, true);
+        bool bBit = gpio_get(iSDDat0Pin);
+        sleep_us_high_power(5);
+        if (!bBit)
+        {
+            bCardTransmit = true;
+            break;
+        }
+    }
+
+    if (bCardTransmit)
+    {
+        bool bValidResponse = read_data(iSDClkPin, iSDDat0Pin, iExpectedBytes, pvData);
+        if (bValidResponse)
+        {
+            sd_clock_tick(iSDClkPin, iSDCmdPin, 8, GPIO_OUT);
+        }
+        return bValidResponse;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool sd_cmd17_read_single_block(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iBlock, int iExpectedBytes, uint8_t* pvData)
+{
+    uint8_t aCommand[6];
+    uint8_t aResponse[6];
+    bool    bResult;
+
+    build_command(aCommand, 17, iBlock);
+    send_command(aCommand, iSDClkPin, iSDCmdPin);
+    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+
+    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, aResponse);
+    if (bResult)
+    {
+        SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
+        if (pResponse->uiCmd == 17)
+        {
+            uint8_t uiExpectedCRC = crc7(aResponse, 5);
+            uiExpectedCRC <<= 1;
+            uiExpectedCRC |= 1;
+            if (pResponse->uiCrc7 == uiExpectedCRC)
+            {
+                receive_data(iSDClkPin, iSDCmdPin, iSDDat0Pin, iExpectedBytes, pvData);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+
 void blink_led(int iMicrosecondDelay)
 {
     bool bLed = true;
@@ -1145,13 +1234,16 @@ int main()
     gpio_set_dir_in_masked(iSDMask);
 
 
+    bool            bResult;
     SSDOCR          sOCR;
     SSDCID          sCID;
     SSDCSD          sCSD;
     SSDR6Status     sR6Status;
     uint16_t        uiAddress;
-    bool            bResult;
     SDCardStatus    sStatus;
+    uint8_t         aData[514];
+
+    memset(aData, 0xff, 514);
 
     sd_cmd0_go_idle(iSDClkPin, iSDCmdPin, iSDDat3Pin, false);
 
@@ -1170,25 +1262,25 @@ int main()
                     bResult = sd_cmd9_send_csd(iSDClkPin, iSDCmdPin, uiAddress, &sCSD);
                     if (bResult)
                     {
-                        bResult = sd_cmd7_select_or_deselect_card(iSDClkPin, iSDCmdPin, iSDDat0Pin, uiAddress, &sStatus);
+                        bResult = sd_cmd7_select_or_deselect_card(iSDClkPin, iSDCmdPin, uiAddress, &sStatus);
                         if (bResult)
                         {
+                            bResult = sd_cmd17_read_single_block(iSDClkPin, iSDCmdPin, iSDDat0Pin, 0, 514, aData);
                             //ACMD6 - Wide bus mode.
                         }
                     }
                 }
             }
         }
-        else
-        {
-            blink_led(100'000);
-        }
     }
-    else
+    if (!bResult)
     {
         blink_led(100'000);
     }
-    blink_led(25'000);
+    else
+    {
+        blink_led(25'000);
+    }
 
 
 
