@@ -434,7 +434,7 @@ bool sd_cmd55_application_specific(int iSDClkPin, int iSDCmdPin, u_int16_t uiRCA
     return false;
 }
 
-
+#pragma pack (push, 1)
 struct SSDResponseR3
 {
     uint8_t uiReserved1;  //Bit 7   : 0 (Start transmit)
@@ -449,6 +449,7 @@ struct SSDResponseR3
     uint8_t uiReserved0;  //Bit 6..1: 0b1111111
                           //Bit 0   : 1 (Stop transmit)
 };
+#pragma pack (pop)
 
 
 bool sd_cmd41_operating_condition(int iSDClkPin, int iSDCmdPin, uint8_t* paResponse)
@@ -535,7 +536,8 @@ bool sd_acmd41_application_operating_condition(int iSDClkPin, int iSDCmdPin, u_i
 }
 
 
-struct SSDResponseR2
+#pragma pack (push, 1)
+struct SSDResponseR2CID
 {
     uint8_t     uiReserved; //Bit 7   : 0 (Start transmit)
                             //Bit 6   : 0 (Card transmit)
@@ -554,6 +556,7 @@ struct SSDResponseR2
     uint8_t uiCrc7;  //Bit 6..1: CRC7
                      //Bit 0   : 1 (Stop transmit)
 };
+#pragma pack (pop)
 
 
 struct SSDCID
@@ -569,7 +572,7 @@ struct SSDCID
 };
 
 
-bool sd_cmd2_send_cid_numbers(int iSDClkPin, int iSDCmdPin, SSDCID* pCID)
+bool sd_cmd2_send_cid(int iSDClkPin, int iSDCmdPin, SSDCID* pCID)
 {
     uint8_t aCommand[6];
     uint8_t aResponse[17];
@@ -582,7 +585,7 @@ bool sd_cmd2_send_cid_numbers(int iSDClkPin, int iSDCmdPin, SSDCID* pCID)
     bResult = receive_response(iSDClkPin, iSDCmdPin, 17, aResponse);
     if (bResult)
     {
-        SSDResponseR2* pResponse = (SSDResponseR2*)aResponse;
+        SSDResponseR2CID* pResponse = (SSDResponseR2CID*)aResponse;
         if (pResponse->uiReserved == 0x3F)
         {
             uint8_t uiExpectedCRC = crc7(&aResponse[1], 15);
@@ -610,6 +613,7 @@ bool sd_cmd2_send_cid_numbers(int iSDClkPin, int iSDCmdPin, SSDCID* pCID)
 }
 
 
+#pragma pack (push, 1)
 struct SSDResponseR6
 {
     uint8_t uiCmd;  //Bit 7   : 0 (Start transmit)
@@ -624,21 +628,22 @@ struct SSDResponseR6
     uint8_t uiCrc7;  //Bit 6..1: CRC7
                      //Bit 0   : 1 (Stop transmit)
 };
+#pragma pack (pop)
 
 
 enum ESDState
 {
-    ESD_Idle,
-    ESD_Ready,
-    ESD_Identify,
-    ESD_StandBy,
-    ESD_Transmit,
-    ESD_Data,
-    ESD_Receive,
-    ESD_Program,
-    ESD_Disabled,
+    SDS_Idle,
+    SDS_Ready,
+    SDS_Identify,
+    SDS_StandBy,
+    SDS_Transmit,
+    SDS_Data,
+    SDS_Receive,
+    SDs_Program,
+    SDS_Disabled,
 
-    ESD_Reserved
+    SDS_Reserved
 };
 
 struct SSDR6Status
@@ -695,6 +700,321 @@ bool sd_cmd3_publish_relative_address(int iSDClkPin, int iSDCmdPin, uint16_t* pu
 }
 
 
+int address_argument(uint16_t uiAddress)
+{
+    int iArgument = uiAddress;
+    iArgument <<= 16;
+
+    return iArgument;
+}
+
+
+int calculate_nanosecond_multiplier(uint8_t uiValue)
+{
+    if (uiValue == 0)
+    {
+        return 1;  //nano
+    }
+    if (uiValue == 1)
+    {
+        return 10;
+    }
+    if (uiValue == 2)
+    {
+        return 100;
+    }
+    if (uiValue == 3)
+    {
+        return 1000;  //micro
+    }
+    if (uiValue == 4)
+    {
+        return 10000;
+    }
+    if (uiValue == 5)
+    {
+        return 100000;
+    }
+    if (uiValue == 6)
+    {
+        return 1000000;  //milli
+    }
+    if (uiValue == 7)
+    {
+        return 10000000;
+    }
+    return 0;
+}
+
+
+float calculate_digit_multiplier(uint8_t uiValue)
+{
+    if (uiValue == 1)
+    {
+        return 1.0f;
+    }
+    if (uiValue == 2)
+    {
+        return 1.2f;
+    }
+    if (uiValue == 3)
+    {
+        return 1.3f;
+    }
+    if (uiValue == 4)
+    {
+        return 1.5f;
+    }
+    if (uiValue == 5)
+    {
+        return 2.0f;
+    }
+    if (uiValue == 6)
+    {
+        return 2.5f;
+    }
+    if (uiValue == 7)
+    {
+        return 3.0f;
+    }
+    if (uiValue == 8)
+    {
+        return 3.5f;
+    }
+    if (uiValue == 9)
+    {
+        return 4.0f;
+    }
+    if (uiValue == 10)
+    {
+        return 4.5f;
+    }
+    if (uiValue == 11)
+    {
+        return 5.0f;
+    }
+    if (uiValue == 12)
+    {
+        return 5.5f;
+    }
+    if (uiValue == 13)
+    {
+        return 6.0f;
+    }
+    if (uiValue == 14)
+    {
+        return 7.0f;
+    }
+    if (uiValue == 15)
+    {
+        return 8.0f;
+    }
+    return -1.0f;
+}
+
+
+int calculate_transmission_speed_multiplier(uint8_t uiValue)
+{
+    if (uiValue == 0)
+    {
+        return 100'000;  //100 Kbits/second
+    }
+    if (uiValue == 1)
+    {
+        return 1'000'000;  //1 Mbits/second
+    }
+    if (uiValue == 2)
+    {
+        return 10'000'000;
+    }
+    if (uiValue == 3)
+    {
+        return 100'000'000;
+    }
+    return 0;
+}
+
+
+#pragma pack (push, 1)
+struct SSDResponseR2CSD
+{
+    uint8_t     uiReserved; //Bit 7   : 0 (Start transmit)
+                            //Bit 6   : 0 (Card transmit)
+                            //Bit 5..0: 0b111111
+
+    uint8_t     uiCSDStructure; //Bit 7..6 : 0b00 (CSD structure)                          
+                                //Bit 5..0 : 0b000000
+
+    uint8_t     uiDataReadAccessTime1;
+    uint8_t     uiDataReadAccessTime0;  //In clock ticks
+    uint8_t     uiMaxDataTransferRate;  //0x32 or 0x5a
+    uint8_t     uiCardCommandClasses1;  //          0b01X11011
+    uint8_t     uiMaxReadBlockLength;   //Bit 7..4: 0b0101
+                                        //Bit 3..0: 0xX (Length)
+                                        
+    uint8_t     uiFlags4;   //Bit 7    : Read partial block
+                            //Bit 6    : Write misaligned block
+                            //Bit 5    : Read misaligned block
+                            //Bit 4    : DSR implemented
+                            //Bit 3..2 : Reserved
+                            //Bit 1..0 : Device size [11..10]
+
+    uint8_t     uiDeviceSize;  // Device size [9..2]
+
+    uint8_t     uiCurrentRatings1;  //Bit 7..6  : Device size [1..0]
+                                    //Bit 5..3  : Max read current at VDD_min
+                                    //Bit 2..0  : Max read current at VDD_max
+    uint8_t     uiCurrentRatings0;  //Bit 7..5  : Max write current at VDD_min
+                                    //Bit 4..2  : Max write current at VDD_max
+                                    //Bit 1..0  : Device size multiplier [2..1]
+
+    uint8_t     uiFlags3;   //Bit 7    : Device size multiplier [0]
+                            //Bit 6    : Erase single block
+                            //Bit 5..0 : Erase sector size [5..1]
+
+    uint8_t     uiFlags2;   //Bit 7    : Erase sector size [0]
+                            //Bit 6..0 : Write protect group size
+
+    uint8_t     uiFlags1;   //Bit 7    : Write protect group
+                            //Bit 6..5 : 0b00
+                            //Bit 4..2 : Write speed factor
+                            //Bit 1..0 : Max write data block length [3..2]
+
+    uint8_t     uiWriteBlock;   //Bit 7..6 : Max write block length [1..0]
+                                //Bit 5    : Write block partial
+                                //Bit 4..0 : 0b00000
+
+    uint8_t     uiFlags0;   //Bit 7    : File format group
+                            //Bit 6    : Copy
+                            //Bit 5    : Permanent write protection                            
+                            //Bit 4    : Temporary write protection
+                            //Bit 3..2 : File format
+                            //Bit 1..0 : 0b00
+
+    uint8_t uiCrc7;  //Bit 6..1: CRC7
+                     //Bit 0   : 1 (Stop transmit)
+};
+#pragma pack (pop)
+
+
+enum ESDFileFormat
+{
+    SDFF_HardDiskLikeWithPartitionTable,
+    SDFF_FloppyDiskLikeBootSectorOnly,
+    SDFF_UniversalFileFormat,
+    SDFF_Unknown,
+
+    SDFF_Reserved
+};
+
+struct SSDCSD
+{
+    uint8_t uiCSDStructure;
+    float   fAsynchronousDataAccessTime;  //Nanoseconds.
+    float   fWorstCaseDataAccessTime;  //Clock cycles.
+    float   fSingleDataMaxTransmissionSpeed;  //Bits per second.
+    int     iMaxReadBlockLength;
+    bool    bReadPartialBlock;
+    bool    bWriteMisalignedBlock;
+    bool    bReadMisalignedBlock;
+    bool    bDSRImplemented;
+    int     iDeviceSize;
+    uint8_t uiWriteSpeedFactor;
+    int     iMaxWriteBlocklength;
+    bool    bWritePartialBlock;
+    bool    bCopy;
+    bool    bPermanentWriteProtection;
+    bool    bTemporaryWriteProtection;
+
+    ESDFileFormat   eFileFormat;
+};
+
+
+bool sd_cmd9_send_csd(int iSDClkPin, int iSDCmdPin, uint16_t uiAddress, SSDCSD* pCSD)
+{
+    uint8_t aCommand[6];
+    uint8_t aResponse[17];
+    bool bResult;
+
+    build_command(aCommand, 9, address_argument(uiAddress));
+    send_command(aCommand, iSDClkPin, iSDCmdPin);
+    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+
+    bResult = receive_response(iSDClkPin, iSDCmdPin, 17, aResponse);
+    if (bResult)
+    {
+        SSDResponseR2CSD* pResponse = (SSDResponseR2CSD*)aResponse;
+        if (pResponse->uiReserved == 0x3F)
+        {
+            uint8_t uiExpectedCRC = crc7(&aResponse[1], 15);
+            uiExpectedCRC <<= 1;
+            uiExpectedCRC |= 1;
+            if (pResponse->uiCrc7 == uiExpectedCRC)
+            {
+                pCSD->uiCSDStructure = pResponse->uiCSDStructure >> 6;
+
+                int iMultiplier = calculate_nanosecond_multiplier(pResponse->uiDataReadAccessTime1 & 0x7);
+                float fDigit = calculate_digit_multiplier((pResponse->uiDataReadAccessTime1 >> 3) & 0xF);
+                pCSD->fAsynchronousDataAccessTime = iMultiplier * fDigit;
+
+                iMultiplier = calculate_nanosecond_multiplier(pResponse->uiDataReadAccessTime0 & 0x7);
+                fDigit = calculate_digit_multiplier((pResponse->uiDataReadAccessTime0 >> 3) & 0xF);
+                pCSD->fWorstCaseDataAccessTime = iMultiplier * fDigit;
+
+                iMultiplier = calculate_transmission_speed_multiplier(pResponse->uiMaxDataTransferRate & 0x7);
+                fDigit = calculate_digit_multiplier((pResponse->uiMaxDataTransferRate >> 3) & 0xF);
+                pCSD->fSingleDataMaxTransmissionSpeed = iMultiplier * fDigit;
+
+                pCSD->iMaxReadBlockLength = 1 << (pResponse->uiMaxReadBlockLength & 0xF);
+
+                pCSD->bReadPartialBlock = (pResponse->uiFlags4 & 0x80) == 0x80;
+                pCSD->bWriteMisalignedBlock = (pResponse->uiFlags4 & 0x40) == 0x40;
+                pCSD->bReadMisalignedBlock = (pResponse->uiFlags4 & 0x20) == 0x20;
+                pCSD->bDSRImplemented = (pResponse->uiFlags4 & 0x10) == 0x10;
+
+                int iCSize = (pResponse->uiFlags4 & 0x3) << 8;
+                iCSize |= pResponse->uiDeviceSize;
+                iCSize <<= 2;
+                iCSize |= pResponse->uiCurrentRatings1 >> 6;
+
+                int iCSizeMultiplier = pResponse->uiCurrentRatings0 & 0x3;
+                iCSizeMultiplier <<= 1;
+                iCSizeMultiplier |= (pResponse->uiFlags3 & 0x80) >> 7;
+                iMultiplier = 1 << (iCSizeMultiplier+2);
+                int iBlockNr = (iCSize + 1) * iMultiplier;
+
+                pCSD->iDeviceSize = pCSD->iMaxReadBlockLength * iBlockNr;
+
+                pCSD->uiWriteSpeedFactor = 1 << ((pResponse->uiFlags1 >> 2) & 0x7);
+
+                int iMaxWriteBlocklength = (pResponse->uiFlags1 & 0x3) << 2;
+                iMaxWriteBlocklength |= (pResponse->uiWriteBlock >> 6) & 0x3;
+                pCSD->iMaxWriteBlocklength = 1 << iMaxWriteBlocklength;
+
+                pCSD->bWritePartialBlock = (pResponse->uiWriteBlock & 0x20) == 0x20;
+
+                bool bFileFormatGroup = (pResponse->uiFlags0 & 0x80) == 0x80;
+                pCSD->bCopy = (pResponse->uiFlags0 & 0x40) == 0x40;
+                pCSD->bPermanentWriteProtection = (pResponse->uiFlags0 & 0x20) == 0x20;
+                pCSD->bTemporaryWriteProtection = (pResponse->uiFlags0 & 0x10) == 0x10;
+
+                if (bFileFormatGroup)
+                {
+                    pCSD->eFileFormat = SDFF_Reserved;
+                }
+                else
+                {
+                    pCSD->eFileFormat = (ESDFileFormat)((pResponse->uiFlags0 >> 2) & 0x3);
+                }
+
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+
 void blink_led(int iMicrosecondDelay)
 {
     bool bLed = true;
@@ -737,6 +1057,7 @@ int main()
 
     SSDOCR      sOCR;
     SSDCID      sCID;
+    SSDCSD      sCSD;
     SSDR6Status sStatus;
     uint16_t    uiAddress;
     bool        bResult;
@@ -749,10 +1070,16 @@ int main()
         bResult = sd_acmd41_application_operating_condition(iSDClkPin, iSDCmdPin, 0, &sOCR);
         if (bResult)
         {
-            bResult = sd_cmd2_send_cid_numbers(iSDClkPin, iSDCmdPin, &sCID);
+            bResult = sd_cmd2_send_cid(iSDClkPin, iSDCmdPin, &sCID);
             if (bResult)
             {
                 bResult = sd_cmd3_publish_relative_address(iSDClkPin, iSDCmdPin, &uiAddress, &sStatus);
+                if (bResult)
+                {
+                    bResult = sd_cmd9_send_csd(iSDClkPin, iSDCmdPin, uiAddress, &sCSD);
+
+                    //ACMD6 - Wide bus mode.
+                }
             }
         }
         else
@@ -764,7 +1091,7 @@ int main()
     {
         blink_led(100'000);
     }
-    blink_led(20'000);
+    blink_led(25'000);
 
 
 
