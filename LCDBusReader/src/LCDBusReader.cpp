@@ -201,6 +201,7 @@ static uint8_t crc7(uint8_t uiCRC, uint8_t uiData)
 	return uiCRC;
 }
 
+
 uint8_t crc7(uint8_t* pvData, int iLength)
 {
 	uint8_t uiCRC = 0;
@@ -213,27 +214,30 @@ uint8_t crc7(uint8_t* pvData, int iLength)
 	return uiCRC >> 1;
 }
 
-static uint16_t crc16(uint16_t uiCRC, uint8_t uiData) 
+
+uint16_t crc16(uint8_t* pvData, int iLength) 
 {
-	uiCRC  = (uint8_t)(uiCRC >> 8) | (uiCRC << 8);
-	uiCRC ^= uiData;
-	uiCRC ^= (uint8_t)(uiCRC & 0xff) >> 4;
-	uiCRC ^= (uiCRC << 8) << 4;
-	uiCRC ^= ((uiCRC & 0xff) << 4) << 1;
+    uint16_t crc;
+    uint8_t i;
 
-	return uiCRC;
-}
-
-uint16_t crc16(uint8_t* pvData, uint32_t len) 
-{
-	uint16_t uiCRC = 0;
-
-	for (int i = 0; i < len; i++) 
+    crc = 0;
+	for (int iByte = 0; iByte < iLength; iByte++)
     {
-        uiCRC = crc16(uiCRC, pvData[i]);
+        crc = crc ^ ((uint16_t) (pvData[iByte] << 8));
+        for(int iBit = 0; iBit < 8; iBit++)
+        {
+            if( crc & 0x8000 )
+            {
+                crc = (crc << 1) ^ 0x1021;
+            }
+            else
+            {
+                crc = crc << 1;
+            }
+        }
     }
 
-	return uiCRC;
+    return crc;
 }
 
 void build_command(uint8_t* pvDest, int iCommand, int iArgument)
@@ -341,7 +345,7 @@ bool receive_response(int iSDClkPin, int iSDCmdPin, int iExpectedBytes, uint8_t*
         bool bValidResponse = read_response(iSDClkPin, iSDCmdPin, iExpectedBytes, pvResponse);
         if (bValidResponse)
         {
-            sd_clock_tick(iSDClkPin, iSDCmdPin, 8, GPIO_OUT);
+            sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_OUT);
         }
         return bValidResponse;
     }
@@ -902,6 +906,16 @@ struct SSDResponseR2CSD
 #pragma pack (pop)
 
 
+enum ESDRegisterStructure
+{
+    SDRS_StandardCapacity,
+    SDRS_HighCapacity,
+    SDRS_UltraCapacity,
+
+    SDRS_Reserved
+};
+
+
 enum ESDFileFormat
 {
     SDFF_HardDiskLikeWithPartitionTable,
@@ -914,24 +928,27 @@ enum ESDFileFormat
 
 struct SSDCSD
 {
-    uint8_t uiCSDStructure;
-    float   fAsynchronousDataAccessTime;  //Nanoseconds.
-    float   fWorstCaseDataAccessTime;  //Clock cycles.
-    float   fSingleDataMaxTransmissionSpeed;  //Bits per second.
-    int     iMaxReadBlockLength;
-    bool    bReadPartialBlock;
-    bool    bWriteMisalignedBlock;
-    bool    bReadMisalignedBlock;
-    bool    bDSRImplemented;
-    int     iDeviceSize;
-    uint8_t uiWriteSpeedFactor;
-    int     iMaxWriteBlocklength;
-    bool    bWritePartialBlock;
-    bool    bCopy;
-    bool    bPermanentWriteProtection;
-    bool    bTemporaryWriteProtection;
-
-    ESDFileFormat   eFileFormat;
+    ESDRegisterStructure    eCSDStructure;
+    float                   fAsynchronousDataAccessTime;  //Nanoseconds.
+    float                   fWorstCaseDataAccessTime;  //Clock cycles.
+    float                   fSingleDataMaxTransmissionSpeed;  //Bits per second.
+    bool                    bCommandClassSwitch;
+    bool                    bCommandClassWriteProtect;
+    bool                    bCommandClassLockCard;
+    bool                    bCommandClassExtensions;
+    int                     iMaxReadBlockLength;
+    bool                    bReadPartialBlock;
+    bool                    bWriteMisalignedBlock;
+    bool                    bReadMisalignedBlock;
+    bool                    bDSRImplemented;
+    int                     iDeviceSize;
+    uint8_t                 uiWriteSpeedFactor;
+    int                     iMaxWriteBlocklength;
+    bool                    bWritePartialBlock;
+    bool                    bCopy;
+    bool                    bPermanentWriteProtection;
+    bool                    bTemporaryWriteProtection;
+    ESDFileFormat           eFileFormat;
 };
 
 
@@ -956,7 +973,7 @@ bool sd_cmd9_send_csd(int iSDClkPin, int iSDCmdPin, uint16_t uiAddress, SSDCSD* 
             uiExpectedCRC |= 1;
             if (pResponse->uiCrc7 == uiExpectedCRC)
             {
-                pCSD->uiCSDStructure = pResponse->uiCSDStructure >> 6;
+                pCSD->eCSDStructure = (ESDRegisterStructure)(pResponse->uiCSDStructure >> 6);
 
                 int iMultiplier = calculate_nanosecond_multiplier(pResponse->uiDataReadAccessTime1 & 0x7);
                 float fDigit = calculate_digit_multiplier((pResponse->uiDataReadAccessTime1 >> 3) & 0xF);
@@ -969,6 +986,13 @@ bool sd_cmd9_send_csd(int iSDClkPin, int iSDCmdPin, uint16_t uiAddress, SSDCSD* 
                 iMultiplier = calculate_transmission_speed_multiplier(pResponse->uiMaxDataTransferRate & 0x7);
                 fDigit = calculate_digit_multiplier((pResponse->uiMaxDataTransferRate >> 3) & 0xF);
                 pCSD->fSingleDataMaxTransmissionSpeed = iMultiplier * fDigit;
+
+                uint16_t uiCardClasses = (pResponse->uiCardCommandClasses1 << 4) | (pResponse->uiMaxReadBlockLength >> 4);
+
+                pCSD->bCommandClassSwitch = (uiCardClasses & (1 << 10)) == 1 << 10;
+                pCSD->bCommandClassWriteProtect = (uiCardClasses & (1 << 6)) == 1 << 6;
+                pCSD->bCommandClassLockCard = (uiCardClasses & (1 << 7)) == 1 << 7;
+                pCSD->bCommandClassExtensions = (uiCardClasses & (1 << 11)) == 1 << 11;
 
                 pCSD->iMaxReadBlockLength = 1 << (pResponse->uiMaxReadBlockLength & 0xF);
 
@@ -1107,21 +1131,23 @@ bool sd_cmd7_select_or_deselect_card(int iSDClkPin, int iSDCmdPin, uint16_t uiAd
 
 bool read_data(int iSDClkPin, int iSDDat0Pin, int iExpectedBytes, uint8_t* pvData)
 {
-    int iBit = 6;
     for (int iByte = 0; iByte < iExpectedBytes; iByte++)
     {
         pvData[iByte] = 0;
-        for (; iBit >= 0; iBit--)
+        for (int iBit = 7; iBit >= 0; iBit--)
         {
             pvData[iByte] <<= 1;
             gpio_put(iSDClkPin, false);
-            sleep_us_high_power(5);
+            gpio_put(iSDClkPin, false);
+            gpio_put(iSDClkPin, false);
+            gpio_put(iSDClkPin, false); //120ns (4 IO puts is allegedly 4 * 30ns)
+            gpio_put(iSDClkPin, true);
+            gpio_put(iSDClkPin, true);
+            gpio_put(iSDClkPin, true);
             gpio_put(iSDClkPin, true);
             bool bBit = gpio_get(iSDDat0Pin);
-            sleep_us_high_power(5);
             pvData[iByte] |= bBit;
         }
-        iBit = 7;
     }
     return true;
 }
@@ -1134,8 +1160,8 @@ bool receive_data(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iExpectedByt
         gpio_set_dir(iSDDat0Pin, GPIO_IN);
     }
 
-    bool bCardTransmit = false;
-    for (int i = 0; i < 200; i++)
+    int iLowCount = 0;
+    for (int i = 0; i < 2000; i++)
     {
         gpio_put(iSDClkPin, false);
         sleep_us_high_power(5);
@@ -1144,25 +1170,39 @@ bool receive_data(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iExpectedByt
         sleep_us_high_power(5);
         if (!bBit)
         {
-            bCardTransmit = true;
-            break;
+            iLowCount++;
+            if (iLowCount == 1)
+            {
+                break;
+            }
         }
     }
 
-    if (bCardTransmit)
+    if (iLowCount == 1)
     {
         bool bValidResponse = read_data(iSDClkPin, iSDDat0Pin, iExpectedBytes, pvData);
         if (bValidResponse)
         {
-            sd_clock_tick(iSDClkPin, iSDCmdPin, 8, GPIO_OUT);
+            uint16_t    uiCRC16Read;
+            uint8_t     aData[2];
+            uint16_t    uiExpectedCRC16;
+            bValidResponse = read_data(iSDClkPin, iSDDat0Pin, 2, aData);
+            sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_OUT);
+            uiCRC16Read = (aData[0] << 8) | aData[1];
+            if (bValidResponse)
+            {
+                uiExpectedCRC16 = crc16(pvData, iExpectedBytes);
+                if (uiExpectedCRC16 == uiCRC16Read)
+                {
+                    return true;
+                }
+
+            }
         }
-        return bValidResponse;
     }
-    else
-    {
-        return false;
-    }
+    return false;
 }
+
 
 bool sd_cmd17_read_single_block(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iBlock, int iExpectedBytes, uint8_t* pvData)
 {
@@ -1191,6 +1231,37 @@ bool sd_cmd17_read_single_block(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, in
         }
     }
     return false;
+}
+
+
+bool sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, bool bSwitch, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode)
+{
+    uint8_t aCommand[6];
+    uint8_t aResponse[6];
+    bool    bResult;
+    uint8_t aDataResponse[512];
+
+    build_command(aCommand, 6, (uiPowerLimit << 12) | (uiDriveStrength << 8) | (uiCommandSystem << 4) | uiAccessMode);
+    send_command(aCommand, iSDClkPin, iSDCmdPin);
+    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+
+    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, aResponse);
+    if (bResult)
+    {
+        SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
+        if (pResponse->uiCmd == 6)
+        {
+            uint8_t uiExpectedCRC = crc7(aResponse, 5);
+            uiExpectedCRC <<= 1;
+            uiExpectedCRC |= 1;
+            if (pResponse->uiCrc7 == uiExpectedCRC)
+            {
+                memset(aDataResponse, 0, 512);
+                receive_data(iSDClkPin, iSDCmdPin, iSDDat0Pin, 512, aDataResponse);
+                return true;
+            }
+        }
+    }
 }
 
 
@@ -1241,9 +1312,8 @@ int main()
     SSDR6Status     sR6Status;
     uint16_t        uiAddress;
     SDCardStatus    sStatus;
-    uint8_t         aData[514];
-
-    memset(aData, 0xff, 514);
+    uint8_t         aData[512];
+    memset(aData, 0xff, 512);
 
     sd_cmd0_go_idle(iSDClkPin, iSDCmdPin, iSDDat3Pin, false);
 
@@ -1262,11 +1332,27 @@ int main()
                     bResult = sd_cmd9_send_csd(iSDClkPin, iSDCmdPin, uiAddress, &sCSD);
                     if (bResult)
                     {
-                        bResult = sd_cmd7_select_or_deselect_card(iSDClkPin, iSDCmdPin, uiAddress, &sStatus);
-                        if (bResult)
+                        if (sCSD.iMaxReadBlockLength == 512)
                         {
-                            bResult = sd_cmd17_read_single_block(iSDClkPin, iSDCmdPin, iSDDat0Pin, 0, 514, aData);
-                            //ACMD6 - Wide bus mode.
+                            bResult = sd_cmd7_select_or_deselect_card(iSDClkPin, iSDCmdPin, uiAddress, &sStatus);
+                            if (bResult)
+                            {
+                                if (sCSD.bCommandClassSwitch)
+                                {
+                                    bResult = sd_cmd6_switch(iSDClkPin, iSDCmdPin, iSDDat0Pin, true, 0xF, 0xF, 0xF, 0x1);
+                                }
+                                bResult = sd_cmd17_read_single_block(iSDClkPin, iSDCmdPin, iSDDat0Pin, 41024, sCSD.iMaxReadBlockLength, aData);
+                                if  (bResult)
+                                {
+                                    int iCmp = memcmp(aData, "John", 4);
+                                    if (iCmp == 0)
+                                    {
+                                        blink_led(25'000);
+                                    }
+                                }
+
+                                //ACMD6 - Wide bus mode.
+                            }
                         }
                     }
                 }
