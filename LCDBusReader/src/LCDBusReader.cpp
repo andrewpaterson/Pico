@@ -1337,7 +1337,7 @@ bool sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, bool bSwitch, 
                 memset(aDataResponse, 0, 512);
                 bResult = receive_data(iSDClkPin, iSDCmdPin, iSDDat0Pin, 512, aDataResponse);
                 {
-                    pFunctionSwitchStatus->uiMaximumCurrentInMilliAmps = aDataResponse[1] << 8 | aDataResponse[0];
+                    pFunctionSwitchStatus->uiMaximumCurrentInMilliAmps = aDataResponse[0] << 8 | aDataResponse[1];
 
                     pFunctionSwitchStatus->uiFunctionGroup6SupportBits = aDataResponse[2] << 8 | aDataResponse[3];
                     pFunctionSwitchStatus->uiFunctionGroup5SupportBits = aDataResponse[4] << 8 | aDataResponse[5];
@@ -1435,16 +1435,23 @@ int main()
                             {
                                 if (sCSD.bCommandClassSwitch)
                                 {
-                                    bResult = sd_cmd6_switch(iSDClkPin, iSDCmdPin, iSDDat0Pin, false, 0xF, 0xF, 0xF, 0xF, &sSwitchStatus);
+                                    bResult = sd_cmd6_switch(iSDClkPin, iSDCmdPin, iSDDat0Pin, true, 0xF, 0xF, 0xF, 0x1, &sSwitchStatus);
                                     if (bResult)
                                     {
-                                        bResult = sd_cmd17_read_single_block(iSDClkPin, iSDCmdPin, iSDDat0Pin, 41024, sCSD.iMaxReadBlockLength, aData);
-                                        if  (bResult)
+                                        bResult = sd_cmd6_switch(iSDClkPin, iSDCmdPin, iSDDat0Pin, false, 0xF, 0xF, 0xF, 0x1, &sSwitchStatus);
+                                        if (bResult)
                                         {
-                                            int iCmp = memcmp(aData, "John", 4);
-                                            if (iCmp == 0)
+                                            if (sSwitchStatus.uiFunctionGroup1Selection == 0x1)
                                             {
-                                                blink_led(25'000);
+                                                bResult = sd_cmd17_read_single_block(iSDClkPin, iSDCmdPin, iSDDat0Pin, 41024, sCSD.iMaxReadBlockLength, aData);
+                                                if  (bResult)
+                                                {
+                                                    int iCmp = memcmp(aData, "John", 4);
+                                                    if (iCmp == 0)
+                                                    {
+                                                        blink_led(25'000);
+                                                    }
+                                                }
                                             }
                                         }
                                     }
