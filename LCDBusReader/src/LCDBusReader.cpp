@@ -10,6 +10,20 @@
 #include "SPIComm.h"
 #include "LTC6903.h"
 
+#define  SD_SLEEP 1
+
+void blink_led(int iMicrosecondDelay)
+{
+    bool bLed = true;
+
+    for (;;)
+    {
+        gpio_put(25, bLed);
+        sleep_us_high_power(iMicrosecondDelay);
+
+        bLed = !bLed;
+    }
+}
 
 void kitt(int iCount, char* szDest)
 {
@@ -256,7 +270,7 @@ bool send_command(uint8_t* pvDest, int iSDClkPin, int iSDCmdPin)
     gpio_set_dir(iSDCmdPin, GPIO_OUT);
     gpio_put(iSDClkPin, false);
     gpio_put(iSDCmdPin, true);
-    sleep_us_high_power(5);
+    sleep_us_high_power(SD_SLEEP);
     for (int iByte = 0; iByte <= 5; iByte++)
     {
         uint8_t uiByte = pvDest[iByte];
@@ -266,9 +280,9 @@ bool send_command(uint8_t* pvDest, int iSDClkPin, int iSDCmdPin)
             uiByte <<= 1;
             gpio_put(iSDClkPin, false);
             gpio_put(iSDCmdPin, bBit);
-            sleep_us_high_power(5);
+            sleep_us_high_power(SD_SLEEP);
             gpio_put(iSDClkPin, true);
-            sleep_us_high_power(5);
+            sleep_us_high_power(SD_SLEEP);
         }
     }
 }
@@ -284,10 +298,10 @@ bool read_response(int iSDClkPin, int iSDCmdPin, int iExpectedBytes, uint8_t* pv
         {
             pvResponse[iByte] <<= 1;
             gpio_put(iSDClkPin, false);
-            sleep_us_high_power(5);
+            sleep_us_high_power(SD_SLEEP);
             gpio_put(iSDClkPin, true);
             bool bBit = gpio_get(iSDCmdPin);
-            sleep_us_high_power(5);
+            sleep_us_high_power(SD_SLEEP);
             pvResponse[iByte] |= bBit;
         }
         iBit = 7;
@@ -311,6 +325,21 @@ void sd_clock_tick(int iSDClkPin, int iSDCmdPin, int iFullCycles, int iCmdDir)
     for (int i = 0; i < iFullCycles; i++)
     {
         gpio_put(iSDClkPin, false);
+        sleep_us_high_power(SD_SLEEP);
+        gpio_put(iSDClkPin, true);
+        sleep_us_high_power(SD_SLEEP);
+    }
+}
+
+
+void sd_initial_tick(int iSDClkPin, int iSDCmdPin)
+{
+    gpio_set_dir(iSDCmdPin, GPIO_OUT);
+    gpio_put(iSDCmdPin, true);
+
+    for (int i = 0; i < 600; i++)
+    {
+        gpio_put(iSDClkPin, false);
         sleep_us_high_power(5);
         gpio_put(iSDClkPin, true);
         sleep_us_high_power(5);
@@ -326,13 +355,13 @@ bool receive_response(int iSDClkPin, int iSDCmdPin, int iExpectedBytes, uint8_t*
     }
 
     bool bCardTransmit = false;
-    for (int i = 0; i < 200; i++)
+    for (int i = 0; i < 1000; i++)
     {
         gpio_put(iSDClkPin, false);
-        sleep_us_high_power(5);
+        sleep_us_high_power(SD_SLEEP);
         gpio_put(iSDClkPin, true);
         bool bBit = gpio_get(iSDCmdPin);
-        sleep_us_high_power(5);
+        sleep_us_high_power(SD_SLEEP);
         if (!bBit)
         {
             bCardTransmit = true;
@@ -364,8 +393,6 @@ void sd_cmd0_go_idle(int iSDClkPin, int iSDCmdPin, int iSDDat3Pin, bool bSDMode)
     
     gpio_set_dir(iSDDat3Pin, GPIO_OUT);
     gpio_put(iSDDat3Pin, !bSDMode);
-
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 74, GPIO_OUT);
 
     send_command(aCommand, iSDClkPin, iSDCmdPin);
 
@@ -486,6 +513,7 @@ bool sd_cmd41_operating_condition(int iSDClkPin, int iSDCmdPin, uint8_t* paRespo
 
 struct SSDOCR
 {
+    bool bDonePoweringOn;
     bool b27_28Volts;
     bool b28_29Volts;
     bool b29_30Volts;
@@ -522,7 +550,8 @@ bool sd_acmd41_application_operating_condition(int iSDClkPin, int iSDCmdPin, u_i
         }
 
         SSDResponseR3* pResponse = (SSDResponseR3*)aResponse;
-        if ((pResponse->uiOCR3 & 0x80) == 0x80)
+        pOCR->bDonePoweringOn = (pResponse->uiOCR3 & 0x80) == 0x80;
+        if (pOCR->bDonePoweringOn)
         {
             pOCR->b35_36Volts = (pResponse->uiOCR2 & 0x80) == 0x80;
             pOCR->b34_35Volts = (pResponse->uiOCR2 & 0x40) == 0x40;
@@ -538,7 +567,30 @@ bool sd_acmd41_application_operating_condition(int iSDClkPin, int iSDCmdPin, u_i
             pOCR->bOver2TBytes = (pResponse->uiOCR3 & 0x8) == 0x8;
             pOCR->bUHSIIStatus = (pResponse->uiOCR3 & 0x20) == 0x20;
             pOCR->bCardCapacityStatus = (pResponse->uiOCR3 & 0x40) == 0x40;
-            return true;
+        }
+        return true;
+    }
+    return false;
+}
+
+
+bool repeat_sd_acmd41_application_operating_condition(int iSDClkPin, int iSDCmdPin, u_int16_t uiRCA, SSDOCR* pOCR)
+{
+    bool bResult;
+
+    for (int iCount = 0; iCount < 1000; iCount++)
+    {
+        bResult = sd_acmd41_application_operating_condition(iSDClkPin, iSDCmdPin, 0, pOCR);
+        if (bResult)
+        {
+            if (pOCR->bDonePoweringOn)
+            {
+                return true;
+            }
+        }
+        else
+        {
+            return false;
         }
     }
     return false;
@@ -1136,15 +1188,14 @@ bool read_data(int iSDClkPin, int iSDDat0Pin, int iExpectedBytes, uint8_t* pvDat
         pvData[iByte] = 0;
         for (int iBit = 7; iBit >= 0; iBit--)
         {
+            gpio_put(iSDClkPin, false);
+            sleep_us_high_power(0);
+
             pvData[iByte] <<= 1;
-            gpio_put(iSDClkPin, false);
-            gpio_put(iSDClkPin, false);
-            gpio_put(iSDClkPin, false);
-            gpio_put(iSDClkPin, false); //120ns (4 IO puts is allegedly 4 * 30ns)
+
             gpio_put(iSDClkPin, true);
-            gpio_put(iSDClkPin, true);
-            gpio_put(iSDClkPin, true);
-            gpio_put(iSDClkPin, true);
+            sleep_us_high_power(0);
+
             bool bBit = gpio_get(iSDDat0Pin);
             pvData[iByte] |= bBit;
         }
@@ -1160,25 +1211,22 @@ bool receive_data(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iExpectedByt
         gpio_set_dir(iSDDat0Pin, GPIO_IN);
     }
 
-    int iLowCount = 0;
+    bool  bCardTransmit = false;
     for (int i = 0; i < 2000; i++)
     {
         gpio_put(iSDClkPin, false);
-        sleep_us_high_power(5);
+        sleep_us_high_power(SD_SLEEP);
         gpio_put(iSDClkPin, true);
         bool bBit = gpio_get(iSDDat0Pin);
-        sleep_us_high_power(5);
+        sleep_us_high_power(SD_SLEEP);
         if (!bBit)
         {
-            iLowCount++;
-            if (iLowCount == 1)
-            {
-                break;
-            }
+            bCardTransmit = true;
+            break;
         }
     }
 
-    if (iLowCount == 1)
+    if (bCardTransmit)
     {
         bool bValidResponse = read_data(iSDClkPin, iSDDat0Pin, iExpectedBytes, pvData);
         if (bValidResponse)
@@ -1236,12 +1284,14 @@ bool sd_cmd17_read_single_block(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, in
 
 bool sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, bool bSwitch, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode)
 {
-    uint8_t aCommand[6];
-    uint8_t aResponse[6];
-    bool    bResult;
-    uint8_t aDataResponse[512];
+    uint8_t     aCommand[6];
+    uint8_t     aResponse[6];
+    bool        bResult;
+    uint8_t     aDataResponse[512];
+    uint32_t    uiArgument;
 
-    build_command(aCommand, 6, (uiPowerLimit << 12) | (uiDriveStrength << 8) | (uiCommandSystem << 4) | uiAccessMode);
+    uiArgument = bSwitch ? 0x80000000 : 0;
+    build_command(aCommand, 6, uiArgument | (uiPowerLimit << 12) | (uiDriveStrength << 8) | (uiCommandSystem << 4) | uiAccessMode);
     send_command(aCommand, iSDClkPin, iSDCmdPin);
     sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
 
@@ -1264,19 +1314,6 @@ bool sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, bool bSwitch, 
     }
 }
 
-
-void blink_led(int iMicrosecondDelay)
-{
-    bool bLed = true;
-
-    for (;;)
-    {
-        gpio_put(25, bLed);
-        sleep_us(iMicrosecondDelay);
-
-        bLed = !bLed;
-    }
-}
 
 int main() 
 {
@@ -1315,12 +1352,14 @@ int main()
     uint8_t         aData[512];
     memset(aData, 0xff, 512);
 
+    sd_initial_tick(iSDClkPin, iSDCmdPin);
+
     sd_cmd0_go_idle(iSDClkPin, iSDCmdPin, iSDDat3Pin, false);
 
     bResult = sd_cmd8_interface_condition(iSDClkPin, iSDCmdPin);
     if (bResult)
     {
-        bResult = sd_acmd41_application_operating_condition(iSDClkPin, iSDCmdPin, 0, &sOCR);
+        bResult = repeat_sd_acmd41_application_operating_condition(iSDClkPin, iSDCmdPin, 0, &sOCR);
         if (bResult)
         {
             bResult = sd_cmd2_send_cid(iSDClkPin, iSDCmdPin, &sCID);
@@ -1337,10 +1376,6 @@ int main()
                             bResult = sd_cmd7_select_or_deselect_card(iSDClkPin, iSDCmdPin, uiAddress, &sStatus);
                             if (bResult)
                             {
-                                if (sCSD.bCommandClassSwitch)
-                                {
-                                    bResult = sd_cmd6_switch(iSDClkPin, iSDCmdPin, iSDDat0Pin, true, 0xF, 0xF, 0xF, 0x1);
-                                }
                                 bResult = sd_cmd17_read_single_block(iSDClkPin, iSDCmdPin, iSDDat0Pin, 41024, sCSD.iMaxReadBlockLength, aData);
                                 if  (bResult)
                                 {
@@ -1359,15 +1394,7 @@ int main()
             }
         }
     }
-    if (!bResult)
-    {
-        blink_led(100'000);
-    }
-    else
-    {
-        blink_led(25'000);
-    }
-
+    blink_led(200'000);
 
 
 
