@@ -1190,13 +1190,9 @@ bool read_data(int iSDClkPin, int iSDDat0Pin, int iExpectedBytes, uint8_t* pvDat
         {
             gpio_put(iSDClkPin, false);
             gpio_put(iSDClkPin, false);
-            gpio_put(iSDClkPin, false);
-            gpio_put(iSDClkPin, false);
 
             pvData[iByte] <<= 1;
 
-            gpio_put(iSDClkPin, true);
-            gpio_put(iSDClkPin, true);
             gpio_put(iSDClkPin, true);
             gpio_put(iSDClkPin, true);
 
