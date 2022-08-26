@@ -337,7 +337,7 @@ void sd_initial_tick(int iSDClkPin, int iSDCmdPin)
     gpio_set_dir(iSDCmdPin, GPIO_OUT);
     gpio_put(iSDCmdPin, true);
 
-    for (int i = 0; i < 600; i++)
+    for (int i = 0; i < 80; i++)
     {
         gpio_put(iSDClkPin, false);
         sleep_us_high_power(5);
