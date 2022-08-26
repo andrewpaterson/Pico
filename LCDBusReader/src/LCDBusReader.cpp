@@ -1189,12 +1189,16 @@ bool read_data(int iSDClkPin, int iSDDat0Pin, int iExpectedBytes, uint8_t* pvDat
         for (int iBit = 7; iBit >= 0; iBit--)
         {
             gpio_put(iSDClkPin, false);
-            sleep_us_high_power(0);
+            gpio_put(iSDClkPin, false);
+            gpio_put(iSDClkPin, false);
+            gpio_put(iSDClkPin, false);
 
             pvData[iByte] <<= 1;
 
             gpio_put(iSDClkPin, true);
-            sleep_us_high_power(0);
+            gpio_put(iSDClkPin, true);
+            gpio_put(iSDClkPin, true);
+            gpio_put(iSDClkPin, true);
 
             bool bBit = gpio_get(iSDDat0Pin);
             pvData[iByte] |= bBit;
