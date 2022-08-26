@@ -1356,11 +1356,11 @@ bool sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, bool bSwitch, 
                     pFunctionSwitchStatus->uiDataStructureVersion = aDataResponse[17];
 
                     pFunctionSwitchStatus->uiFunctionGroup6BusyStatus = aDataResponse[18] << 8 | aDataResponse[19];
-                    pFunctionSwitchStatus->uiFunctionGroup6BusyStatus = aDataResponse[20] << 8 | aDataResponse[21];
-                    pFunctionSwitchStatus->uiFunctionGroup6BusyStatus = aDataResponse[22] << 8 | aDataResponse[23];
-                    pFunctionSwitchStatus->uiFunctionGroup6BusyStatus = aDataResponse[24] << 8 | aDataResponse[25];
-                    pFunctionSwitchStatus->uiFunctionGroup6BusyStatus = aDataResponse[26] << 8 | aDataResponse[27];
-                    pFunctionSwitchStatus->uiFunctionGroup6BusyStatus = aDataResponse[28] << 8 | aDataResponse[29];
+                    pFunctionSwitchStatus->uiFunctionGroup5BusyStatus = aDataResponse[20] << 8 | aDataResponse[21];
+                    pFunctionSwitchStatus->uiFunctionGroup4BusyStatus = aDataResponse[22] << 8 | aDataResponse[23];
+                    pFunctionSwitchStatus->uiFunctionGroup3BusyStatus = aDataResponse[24] << 8 | aDataResponse[25];
+                    pFunctionSwitchStatus->uiFunctionGroup2BusyStatus = aDataResponse[26] << 8 | aDataResponse[27];
+                    pFunctionSwitchStatus->uiFunctionGroup1BusyStatus = aDataResponse[28] << 8 | aDataResponse[29];
                     
                     return true;
                 }
