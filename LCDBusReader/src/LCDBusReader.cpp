@@ -1282,7 +1282,35 @@ bool sd_cmd17_read_single_block(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, in
 }
 
 
-bool sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, bool bSwitch, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode)
+struct SSDFunctionSwitchStatus
+{
+    uint16_t    uiMaximumCurrentInMilliAmps;
+    uint16_t    uiFunctionGroup6SupportBits;
+    uint16_t    uiFunctionGroup5SupportBits;
+    uint16_t    uiFunctionGroup4SupportBits;
+    uint16_t    uiFunctionGroup3SupportBits;
+    uint16_t    uiFunctionGroup2SupportBits;
+    uint16_t    uiFunctionGroup1SupportBits;
+
+    uint8_t     uiFunctionGroup6Selection;
+    uint8_t     uiFunctionGroup5Selection;
+    uint8_t     uiFunctionGroup4Selection;
+    uint8_t     uiFunctionGroup3Selection;
+    uint8_t     uiFunctionGroup2Selection;
+    uint8_t     uiFunctionGroup1Selection;
+
+    uint8_t     uiDataStructureVersion;
+
+    uint16_t    uiFunctionGroup6BusyStatus;
+    uint16_t    uiFunctionGroup5BusyStatus;
+    uint16_t    uiFunctionGroup4BusyStatus;
+    uint16_t    uiFunctionGroup3BusyStatus;
+    uint16_t    uiFunctionGroup2BusyStatus;
+    uint16_t    uiFunctionGroup1BusyStatus;
+};
+
+
+bool sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, bool bSwitch, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode, SSDFunctionSwitchStatus* pFunctionSwitchStatus)
 {
     uint8_t     aCommand[6];
     uint8_t     aResponse[6];
@@ -1307,11 +1335,39 @@ bool sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, bool bSwitch, 
             if (pResponse->uiCrc7 == uiExpectedCRC)
             {
                 memset(aDataResponse, 0, 512);
-                receive_data(iSDClkPin, iSDCmdPin, iSDDat0Pin, 512, aDataResponse);
-                return true;
+                bResult = receive_data(iSDClkPin, iSDCmdPin, iSDDat0Pin, 512, aDataResponse);
+                {
+                    pFunctionSwitchStatus->uiMaximumCurrentInMilliAmps = aDataResponse[1] << 8 | aDataResponse[0];
+
+                    pFunctionSwitchStatus->uiFunctionGroup6SupportBits = aDataResponse[2] << 8 | aDataResponse[3];
+                    pFunctionSwitchStatus->uiFunctionGroup5SupportBits = aDataResponse[4] << 8 | aDataResponse[5];
+                    pFunctionSwitchStatus->uiFunctionGroup4SupportBits = aDataResponse[6] << 8 | aDataResponse[7];
+                    pFunctionSwitchStatus->uiFunctionGroup3SupportBits = aDataResponse[8] << 8 | aDataResponse[9];
+                    pFunctionSwitchStatus->uiFunctionGroup2SupportBits = aDataResponse[10] << 8 | aDataResponse[11];
+                    pFunctionSwitchStatus->uiFunctionGroup1SupportBits = aDataResponse[12] << 8 | aDataResponse[13];
+
+                    pFunctionSwitchStatus->uiFunctionGroup6Selection = aDataResponse[14] >> 4;
+                    pFunctionSwitchStatus->uiFunctionGroup5Selection = aDataResponse[14] & 0xF;
+                    pFunctionSwitchStatus->uiFunctionGroup4Selection = aDataResponse[15] >> 4;
+                    pFunctionSwitchStatus->uiFunctionGroup3Selection = aDataResponse[15] & 0xF;
+                    pFunctionSwitchStatus->uiFunctionGroup2Selection = aDataResponse[16] >> 4;
+                    pFunctionSwitchStatus->uiFunctionGroup1Selection = aDataResponse[16] & 0xF;
+
+                    pFunctionSwitchStatus->uiDataStructureVersion = aDataResponse[17];
+
+                    pFunctionSwitchStatus->uiFunctionGroup6BusyStatus = aDataResponse[18] << 8 | aDataResponse[19];
+                    pFunctionSwitchStatus->uiFunctionGroup6BusyStatus = aDataResponse[20] << 8 | aDataResponse[21];
+                    pFunctionSwitchStatus->uiFunctionGroup6BusyStatus = aDataResponse[22] << 8 | aDataResponse[23];
+                    pFunctionSwitchStatus->uiFunctionGroup6BusyStatus = aDataResponse[24] << 8 | aDataResponse[25];
+                    pFunctionSwitchStatus->uiFunctionGroup6BusyStatus = aDataResponse[26] << 8 | aDataResponse[27];
+                    pFunctionSwitchStatus->uiFunctionGroup6BusyStatus = aDataResponse[28] << 8 | aDataResponse[29];
+                    
+                    return true;
+                }
             }
         }
     }
+    return false;
 }
 
 
@@ -1342,14 +1398,15 @@ int main()
     gpio_set_dir_in_masked(iSDMask);
 
 
-    bool            bResult;
-    SSDOCR          sOCR;
-    SSDCID          sCID;
-    SSDCSD          sCSD;
-    SSDR6Status     sR6Status;
-    uint16_t        uiAddress;
-    SDCardStatus    sStatus;
-    uint8_t         aData[512];
+    bool                        bResult;
+    SSDOCR                      sOCR;
+    SSDCID                      sCID;
+    SSDCSD                      sCSD;
+    SSDR6Status                 sR6Status;
+    uint16_t                    uiAddress;
+    SDCardStatus                sStatus;
+    SSDFunctionSwitchStatus     sSwitchStatus;
+    uint8_t                     aData[512];
     memset(aData, 0xff, 512);
 
     sd_initial_tick(iSDClkPin, iSDCmdPin);
@@ -1376,13 +1433,20 @@ int main()
                             bResult = sd_cmd7_select_or_deselect_card(iSDClkPin, iSDCmdPin, uiAddress, &sStatus);
                             if (bResult)
                             {
-                                bResult = sd_cmd17_read_single_block(iSDClkPin, iSDCmdPin, iSDDat0Pin, 41024, sCSD.iMaxReadBlockLength, aData);
-                                if  (bResult)
+                                if (sCSD.bCommandClassSwitch)
                                 {
-                                    int iCmp = memcmp(aData, "John", 4);
-                                    if (iCmp == 0)
+                                    bResult = sd_cmd6_switch(iSDClkPin, iSDCmdPin, iSDDat0Pin, false, 0xF, 0xF, 0xF, 0xF, &sSwitchStatus);
+                                    if (bResult)
                                     {
-                                        blink_led(25'000);
+                                        bResult = sd_cmd17_read_single_block(iSDClkPin, iSDCmdPin, iSDDat0Pin, 41024, sCSD.iMaxReadBlockLength, aData);
+                                        if  (bResult)
+                                        {
+                                            int iCmp = memcmp(aData, "John", 4);
+                                            if (iCmp == 0)
+                                            {
+                                                blink_led(25'000);
+                                            }
+                                        }
                                     }
                                 }
 
