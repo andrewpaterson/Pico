@@ -1162,16 +1162,20 @@ void unstripe_data(uint8_t* pUnstripedData, int iOffset, int iExpectedBytes, uin
     memset(pUnstripedData, 0xff, iExpectedBytes / 4);
     int iUnstripeByte = 0;
     int ui1, ui2, ui3, ui4;
-    for (int iByte = 0; iByte < iExpectedBytes; iByte += 4)
+    int iByte;
+    uint8_t uiUnstripedUpper;
+    uint8_t uiUnstripedLower;
+
+    for (iByte = 0; iByte < iExpectedBytes; iByte += 4)
     {
         ui1 = pvSourceData[iByte] << iOffset;
         ui2 = pvSourceData[iByte + 1] << iOffset;
         ui3 = pvSourceData[iByte + 2] << iOffset;
         ui4 = pvSourceData[iByte + 3] << iOffset;
 
-
-        pUnstripedData[iUnstripeByte] = (ui1 & 0x80) |  ((ui2 & 0x80) >> 1) | ((ui3 & 0x80) >> 2) | ((ui4 & 0x80) >> 3) |  
-                                        (ui1 & 0x8) |  ((ui2 & 0x8) >> 1) | ((ui3 & 0x8) >> 2) | ((ui4 & 0x8) >> 3);
+        uiUnstripedUpper = (ui1 & 0x80) |  ((ui2 & 0x80) >> 2) | ((ui3 & 0x80) >> 4) | ((ui4 & 0x80) >> 6);
+        uiUnstripedLower = ((ui1 & 0x8) << 3) |  ((ui2 & 0x8) << 1) | ((ui3 & 0x8) >> 1) | ((ui4 & 0x8) >> 3);
+        pUnstripedData[iUnstripeByte] = uiUnstripedUpper | uiUnstripedLower;
         iUnstripeByte++;    
     }
 }
@@ -1220,6 +1224,12 @@ bool wait_for_transmit(int iSDClkPin, int iSDDat0Pin, int iSDDat1Pin, int iSDDat
 
 bool receive_data_wide(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1Pin, int iSDDat2Pin, int iSDDat3Pin, int iExpectedBytes, uint8_t* pvData)
 {
+    uint16_t    uiCRC16Read;
+    uint8_t     aCRC[8];
+    uint8_t     aUnstripedData[512];  //Maximum allowed block size is 2048.
+    uint8_t     aUnstripedCRC[2];
+    uint16_t    uiExpectedCRC16;
+
     bool bCardTransmit = wait_for_transmit(iSDClkPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin);
 
     if (bCardTransmit)
@@ -1227,13 +1237,46 @@ bool receive_data_wide(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1
         bool bValidResponse = read_data_wide(iSDClkPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin, iExpectedBytes, pvData);
         if (bValidResponse)
         {
-            uint8_t     aCRC[8];
-            bValidResponse = read_data_wide(iSDClkPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin, 2, aCRC);
+            bValidResponse = read_data_wide(iSDClkPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin, 8, aCRC);
             sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_OUT);
             
             if (bValidResponse)
             {
-                return true;
+                unstripe_data(aUnstripedData, 0, iExpectedBytes, pvData);
+                unstripe_data(aUnstripedCRC, 0, 8, aCRC);
+                uiExpectedCRC16 = crc16(aUnstripedData, iExpectedBytes / 4);
+                uiCRC16Read = (aUnstripedCRC[0] << 8) | aUnstripedCRC[1];
+                if (uiExpectedCRC16 != uiCRC16Read)
+                {
+                    return false;
+                }
+
+                unstripe_data(aUnstripedData, 1, iExpectedBytes, pvData);
+                unstripe_data(aUnstripedCRC, 1, 8, aCRC);
+                uiExpectedCRC16 = crc16(aUnstripedData, iExpectedBytes / 4);
+                uiCRC16Read = (aUnstripedCRC[0] << 8) | aUnstripedCRC[1];
+                if (uiExpectedCRC16 != uiCRC16Read)
+                {
+                    return false;
+                }
+
+                unstripe_data(aUnstripedData, 2, iExpectedBytes, pvData);
+                unstripe_data(aUnstripedCRC, 2, 8, aCRC);
+                uiExpectedCRC16 = crc16(aUnstripedData, iExpectedBytes / 4);
+                uiCRC16Read = (aUnstripedCRC[0] << 8) | aUnstripedCRC[1];
+                if (uiExpectedCRC16 != uiCRC16Read)
+                {
+                    return false;
+                }
+
+                unstripe_data(aUnstripedData, 3, iExpectedBytes, pvData);
+                unstripe_data(aUnstripedCRC, 3, 8, aCRC);
+                uiExpectedCRC16 = crc16(aUnstripedData, iExpectedBytes / 4);
+                uiCRC16Read = (aUnstripedCRC[0] << 8) | aUnstripedCRC[1];
+                if (uiExpectedCRC16 == uiCRC16Read)
+                {
+                    return true;
+                }
             }
         }
     }

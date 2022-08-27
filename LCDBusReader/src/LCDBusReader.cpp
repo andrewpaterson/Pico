@@ -186,7 +186,7 @@ int get_snes_button(uint16_t uiButtons)
 int     giDelay;
 
 
-void do_shit(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1Pin, int iSDDat2Pin, int iSDDat3Pin, uint16_t uiAddress)
+void do_block_reads(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1Pin, int iSDDat2Pin, int iSDDat3Pin, uint16_t uiAddress)
 {
     uint8_t          aData[512];
     bool            bResult;
@@ -282,7 +282,7 @@ int main()
                                             bResult = check_sd_cmd6_switch(iSDClkPin, iSDCmdPin, iSDDat0Pin, 0xF, 0xF, 0xF, 0x1, &sSwitchStatus);
                                             if (bResult)
                                             {
-                                                do_shit(iSDClkPin, iSDCmdPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin, uiAddress);
+                                                do_block_reads(iSDClkPin, iSDCmdPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin, uiAddress);
                                             }
                                         }
                                     }
