@@ -17,6 +17,7 @@ add_executable(lcd_bus_reader
   src/UARTComm.cpp
   src/SPIComm.cpp
   src/LTC6903.cpp
+  src/SDCard.cpp
 )
 
 target_include_directories(lcd_bus_reader PRIVATE
