@@ -1523,6 +1523,26 @@ bool read_data_wide(int iSDClkPin, int iSDDat0Pin, int iSDDat1Pin, int iSDDat2Pi
 }
 
 
+void unstripe_data(uint8_t* pUnstripedData, int iOffset, int iExpectedBytes, uint8_t* pvSourceData)
+{
+    memset(pUnstripedData, 0xff, iExpectedBytes / 4);
+    int iUnstripeByte = 0;
+    int ui1, ui2, ui3, ui4;
+    for (int iByte = 0; iByte < iExpectedBytes; iByte += 4)
+    {
+        ui1 = pvSourceData[iByte] << iOffset;
+        ui2 = pvSourceData[iByte + 1] << iOffset;
+        ui3 = pvSourceData[iByte + 2] << iOffset;
+        ui4 = pvSourceData[iByte + 3] << iOffset;
+
+
+        pUnstripedData[iUnstripeByte] = (ui1 & 0x80) |  ((ui2 & 0x80) >> 1) | ((ui3 & 0x80) >> 2) | ((ui4 & 0x80) >> 3) |  
+                                        (ui1 & 0x8) |  ((ui2 & 0x8) >> 1) | ((ui3 & 0x8) >> 2) | ((ui4 & 0x8) >> 3);
+        iUnstripeByte++;    
+    }
+}
+
+
 bool receive_data_wide(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1Pin, int iSDDat2Pin, int iSDDat3Pin, int iExpectedBytes, uint8_t* pvData)
 {
     if (gpio_get_dir(iSDDat1Pin) == GPIO_OUT)
@@ -1546,18 +1566,23 @@ bool receive_data_wide(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1
         if (bValidResponse)
         {
             uint16_t    uiCRC16Read;
-            uint8_t     aData[2];
+            uint8_t     aCRC[8];
+            uint8_t     aUnstripedData[512];  //Maximum allowed block size is 2048.
+            uint8_t     aUnstripedCRC[2];
             uint16_t    uiExpectedCRC16;
-            bValidResponse = read_data_wide(iSDClkPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin, 2, aData);
+            bValidResponse = read_data_wide(iSDClkPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin, 29, aCRC);
             sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_OUT);
-            uiCRC16Read = (aData[0] << 8) | aData[1];
+            
             if (bValidResponse)
             {
-                uiExpectedCRC16 = crc16(pvData, iExpectedBytes);
-                if (uiExpectedCRC16 == uiCRC16Read)
-                {
-                    return true;
-                }
+                // unstripe_data(aUnstripedData, 0, iExpectedBytes, pvData);
+                // unstripe_data(aUnstripedCRC, 0, 8, aCRC);
+                // uiExpectedCRC16 = crc16(aUnstripedData, iExpectedBytes / 4);
+                // uiCRC16Read = (aUnstripedCRC[0] << 8) | aUnstripedCRC[1];
+                // if (uiExpectedCRC16 == uiCRC16Read)
+                // {
+                     return true;
+                // }
 
             }
         }
@@ -1668,22 +1693,19 @@ int main()
                                                     int iCmp = memcmp(aData, "John", 4);
                                                     if (iCmp == 0)
                                                     {
-                                                        bResult = sd_acmd6_set_bus_width(iSDClkPin, iSDCmdPin, uiAddress, 2, &sStatus);
+                                                        bResult = sd_acmd6_set_bus_width(iSDClkPin, iSDCmdPin, uiAddress, 3, &sStatus);
                                                         if  (bResult)
                                                         {
                                                             memset(aData, 0xff, 512);
                                                             bResult = sd_cmd17_read_single_block_wide(iSDClkPin, iSDCmdPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin, 41024, sCSD.iMaxReadBlockLength, aData);
-                                                            if  (bResult)
+                                                            int iCmp = memcmp(aData, "John", 4);
+                                                            if (iCmp == 0)
                                                             {
-                                                                int iCmp = memcmp(aData, "John", 4);
-                                                                if (iCmp == 0)
-                                                                {
-                                                                    blink_led(25'000);
-                                                                }
-                                                                else
-                                                                {
-                                                                    blink_led(200'000);
-                                                                }
+                                                                blink_led(25'000);
+                                                            }
+                                                            else
+                                                            {
+                                                                blink_led(200'000);
                                                             }
                                                         }
                                                     }
