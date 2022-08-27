@@ -188,7 +188,7 @@ int     giDelay;
 
 void do_block_reads(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1Pin, int iSDDat2Pin, int iSDDat3Pin, uint16_t uiAddress)
 {
-    uint8_t          aData[512];
+    uint8_t         aData[512];
     bool            bResult;
     SSDCardStatus   sStatus;
 
@@ -196,7 +196,7 @@ void do_block_reads(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1Pin
     bResult = sd_cmd17_read_single_block_narrow(iSDClkPin, iSDCmdPin, iSDDat0Pin, 41024, 512, aData);
     if (bResult)
     {
-        int iCmp = memcmp(aData, "John", 4);
+        int iCmp = memcmp(aData, "John West wrote:", 16);
         if (iCmp == 0)
         {
             bResult = sd_acmd6_set_bus_width(iSDClkPin, iSDCmdPin, uiAddress, 2, &sStatus);
@@ -206,7 +206,7 @@ void do_block_reads(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1Pin
                 bool bResult = sd_cmd17_read_single_block_wide(iSDClkPin, iSDCmdPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin, 41024, 512, aData);
                 if (bResult)
                 {
-                    int iCmp = memcmp(aData, "John", 4);
+                    int iCmp = memcmp(aData, "John West wrote:", 16);
                     if (iCmp == 0)
                     {
                         blink_led(25'000);
