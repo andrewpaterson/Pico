@@ -1371,6 +1371,49 @@ bool sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, bool bSwitch, 
 }
 
 
+bool check_sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode, SSDFunctionSwitchStatus* pFunctionSwitchStatus)
+{
+    bool bResult;
+
+    bResult = sd_cmd6_switch(iSDClkPin, iSDCmdPin, iSDDat0Pin, false, uiPowerLimit, uiDriveStrength, uiCommandSystem, uiAccessMode, pFunctionSwitchStatus);
+    if (!bResult)
+    {
+        return false;
+    }
+
+    bool bPowerLimitSelected = false;
+    if ((uiPowerLimit == 0xF) || (pFunctionSwitchStatus->uiFunctionGroup4Selection == uiPowerLimit))
+    {
+        bPowerLimitSelected = true;
+    }
+
+    bool bDriveStrengthSelected = false;
+    if ((uiDriveStrength == 0xF) || (pFunctionSwitchStatus->uiFunctionGroup3Selection == uiDriveStrength))
+    {
+        bDriveStrengthSelected = true;
+    }
+
+    bool bCommandSystemSelected = false;
+    if ((uiCommandSystem == 0xF) || (pFunctionSwitchStatus->uiFunctionGroup2Selection == uiCommandSystem))
+    {
+        bCommandSystemSelected = true;
+    }
+
+    bool bAccessModeSelected = false;
+    if ((uiAccessMode == 0xF) || (pFunctionSwitchStatus->uiFunctionGroup1Selection == uiAccessMode))
+    {
+        bAccessModeSelected = true;
+    }
+
+    if (bPowerLimitSelected && bDriveStrengthSelected && bCommandSystemSelected && bAccessModeSelected)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+
 int main() 
 {
     stdio_init_all();
@@ -1411,37 +1454,37 @@ int main()
 
     sd_initial_tick(iSDClkPin, iSDCmdPin);
 
-    sd_cmd0_go_idle(iSDClkPin, iSDCmdPin, iSDDat3Pin, false);
-
-    bResult = sd_cmd8_interface_condition(iSDClkPin, iSDCmdPin);
-    if (bResult)
+    for (int iRestartCount = 1; iRestartCount++;)
     {
-        bResult = repeat_sd_acmd41_application_operating_condition(iSDClkPin, iSDCmdPin, 0, &sOCR);
+        sd_cmd0_go_idle(iSDClkPin, iSDCmdPin, iSDDat3Pin, false);
+
+        bResult = sd_cmd8_interface_condition(iSDClkPin, iSDCmdPin);
         if (bResult)
         {
-            bResult = sd_cmd2_send_cid(iSDClkPin, iSDCmdPin, &sCID);
+            bResult = repeat_sd_acmd41_application_operating_condition(iSDClkPin, iSDCmdPin, 0, &sOCR);
             if (bResult)
             {
-                bResult = sd_cmd3_publish_relative_address(iSDClkPin, iSDCmdPin, &uiAddress, &sR6Status);
+                bResult = sd_cmd2_send_cid(iSDClkPin, iSDCmdPin, &sCID);
                 if (bResult)
                 {
-                    bResult = sd_cmd9_send_csd(iSDClkPin, iSDCmdPin, uiAddress, &sCSD);
+                    bResult = sd_cmd3_publish_relative_address(iSDClkPin, iSDCmdPin, &uiAddress, &sR6Status);
                     if (bResult)
                     {
-                        if (sCSD.iMaxReadBlockLength == 512)
+                        bResult = sd_cmd9_send_csd(iSDClkPin, iSDCmdPin, uiAddress, &sCSD);
+                        if (bResult)
                         {
-                            bResult = sd_cmd7_select_or_deselect_card(iSDClkPin, iSDCmdPin, uiAddress, &sStatus);
-                            if (bResult)
+                            if (sCSD.iMaxReadBlockLength == 512)
                             {
-                                if (sCSD.bCommandClassSwitch)
+                                bResult = sd_cmd7_select_or_deselect_card(iSDClkPin, iSDCmdPin, uiAddress, &sStatus);
+                                if (bResult)
                                 {
-                                    bResult = sd_cmd6_switch(iSDClkPin, iSDCmdPin, iSDDat0Pin, true, 0xF, 0xF, 0xF, 0x1, &sSwitchStatus);
-                                    if (bResult)
+                                    if (sCSD.bCommandClassSwitch)
                                     {
-                                        bResult = sd_cmd6_switch(iSDClkPin, iSDCmdPin, iSDDat0Pin, false, 0xF, 0xF, 0xF, 0x1, &sSwitchStatus);
+                                        bResult = sd_cmd6_switch(iSDClkPin, iSDCmdPin, iSDDat0Pin, true, 0x1, 0xF, 0xF, 0x1, &sSwitchStatus);
                                         if (bResult)
                                         {
-                                            if (sSwitchStatus.uiFunctionGroup1Selection == 0x1)
+                                            bResult = check_sd_cmd6_switch(iSDClkPin, iSDCmdPin, iSDDat0Pin, 0xF, 0xF, 0xF, 0x1, &sSwitchStatus);
+                                            if (bResult)
                                             {
                                                 bResult = sd_cmd17_read_single_block(iSDClkPin, iSDCmdPin, iSDDat0Pin, 41024, sCSD.iMaxReadBlockLength, aData);
                                                 if  (bResult)
