@@ -197,7 +197,7 @@ void do_block_reads(SSDCardPins* pPins, uint16_t uiAddress)
     uint8_t         aMultiDataExpected[512 * 14];
 
     memset(aData, 0xff, 512);
-    bResult = sd_cmd17_read_single_block_narrow(pPins, 41024, 512, aData);
+    bResult = sd_cmd17_read_single_block_narrow(pPins, 41024, 512, aData, &sStatus);
     if (bResult)
     {
         int iCmp = memcmp(aData, "John West wrote:", 16);
@@ -207,7 +207,7 @@ void do_block_reads(SSDCardPins* pPins, uint16_t uiAddress)
             if (bResult)
             {
                 memset(aData, 0xff, 512);
-                bool bResult = sd_cmd17_read_single_block_wide(pPins, 41024, 512, aData);
+                bool bResult = sd_cmd17_read_single_block_wide(pPins, 41024, 512, aData, &sStatus);
                 if (bResult)
                 {
                     int iCmp = memcmp(aData, "John West wrote:", 16);
@@ -278,10 +278,10 @@ int main()
                                 {
                                     if (sCSD.bCommandClassSwitch)
                                     {
-                                        bResult = sd_cmd6_switch(&sPins, true, 0x1, 0xF, 0xF, 0x1, &sSwitchStatus);
+                                        bResult = sd_cmd6_switch(&sPins, true, 0x1, 0xF, 0xF, 0x1, &sStatus, &sSwitchStatus);
                                         if (bResult)
                                         {
-                                            bResult = check_sd_cmd6_switch(&sPins, 0xF, 0xF, 0xF, 0x1, &sSwitchStatus);
+                                            bResult = check_sd_cmd6_switch(&sPins, 0xF, 0xF, 0xF, 0x1, &sStatus, &sSwitchStatus);
                                             if (bResult)
                                             {
                                                 do_block_reads(&sPins, uiAddress);

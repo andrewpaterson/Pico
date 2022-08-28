@@ -964,7 +964,7 @@ bool receive_data_narrow(SSDCardPins* pPins, int iExpectedBytes, uint8_t* pvData
 }
 
 
-bool sd_cmd17_read_single_block_narrow(SSDCardPins* pPins, int iBlock, int iExpectedBytes, uint8_t* pvData)
+bool sd_cmd17_read_single_block_narrow(SSDCardPins* pPins, int iBlock, int iExpectedBytes, uint8_t* pvData, SSDCardStatus* pStatus)
 {
     uint8_t aCommand[6];
     uint8_t aResponse[6];
@@ -985,6 +985,7 @@ bool sd_cmd17_read_single_block_narrow(SSDCardPins* pPins, int iBlock, int iExpe
             uiExpectedCRC |= 1;
             if (pResponse->uiCrc7 == uiExpectedCRC)
             {
+                calculate_status(pStatus, pResponse);
                 receive_data_narrow(pPins, iExpectedBytes, pvData);
                 return true;
             }
@@ -994,7 +995,7 @@ bool sd_cmd17_read_single_block_narrow(SSDCardPins* pPins, int iBlock, int iExpe
 }
 
 
-bool sd_cmd6_switch(SSDCardPins* pPins, bool bSwitch, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode, SSDFunctionSwitchStatus* pFunctionSwitchStatus)
+bool sd_cmd6_switch(SSDCardPins* pPins, bool bSwitch, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode, SSDCardStatus* pStatus, SSDFunctionSwitchStatus* pFunctionSwitchStatus)
 {
     uint8_t     aCommand[6];
     uint8_t     aResponse[6];
@@ -1018,6 +1019,7 @@ bool sd_cmd6_switch(SSDCardPins* pPins, bool bSwitch, uint8_t uiPowerLimit, uint
             uiExpectedCRC |= 1;
             if (pResponse->uiCrc7 == uiExpectedCRC)
             {
+                calculate_status(pStatus, pResponse);
                 memset(aDataResponse, 0, 512);
                 bResult = receive_data_narrow(pPins, 512, aDataResponse);
                 {
@@ -1055,11 +1057,11 @@ bool sd_cmd6_switch(SSDCardPins* pPins, bool bSwitch, uint8_t uiPowerLimit, uint
 }
 
 
-bool check_sd_cmd6_switch(SSDCardPins* pPins, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode, SSDFunctionSwitchStatus* pFunctionSwitchStatus)
+bool check_sd_cmd6_switch(SSDCardPins* pPins, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode, SSDCardStatus* pStatus, SSDFunctionSwitchStatus* pFunctionSwitchStatus)
 {
     bool bResult;
 
-    bResult = sd_cmd6_switch(pPins, false, uiPowerLimit, uiDriveStrength, uiCommandSystem, uiAccessMode, pFunctionSwitchStatus);
+    bResult = sd_cmd6_switch(pPins, false, uiPowerLimit, uiDriveStrength, uiCommandSystem, uiAccessMode, pStatus, pFunctionSwitchStatus);
     if (!bResult)
     {
         return false;
@@ -1308,7 +1310,7 @@ bool receive_data_wide(SSDCardPins* pPins, int iExpectedBytes, uint8_t* pvData)
 }
 
 
-bool sd_cmd17_read_single_block_wide(SSDCardPins* pPins, int iBlock, int iExpectedBytes, uint8_t* pvData)
+bool sd_cmd17_read_single_block_wide(SSDCardPins* pPins, int iBlock, int iExpectedBytes, uint8_t* pvData, SSDCardStatus* pStatus)
 {
     uint8_t aCommand[6];
     uint8_t aResponse[6];
@@ -1329,10 +1331,41 @@ bool sd_cmd17_read_single_block_wide(SSDCardPins* pPins, int iBlock, int iExpect
             uiExpectedCRC |= 1;
             if (pResponse->uiCrc7 == uiExpectedCRC)
             {
+                calculate_status(pStatus, pResponse);
                 bResult = receive_data_wide(pPins, iExpectedBytes, pvData);
+                return true;
             }
         }
     }
-    return bResult;
+    return false;
 }
 
+
+bool sd_cmd_23_set_block_count(SSDCardPins* pPins, int iCount, SSDCardStatus* pStatus)
+{
+    uint8_t aCommand[6];
+    uint8_t aResponse[6];
+    bool    bResult;
+
+    build_command(aCommand, 23, iCount);
+    send_command(pPins, aCommand);
+    sd_clock_tick(pPins, 4, GPIO_IN);
+
+    bResult = receive_response(pPins, 6, aResponse);
+    if (bResult)
+    {
+        SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
+        if (pResponse->uiCmd == 23)
+        {
+            uint8_t uiExpectedCRC = crc7(aResponse, 5);
+            uiExpectedCRC <<= 1;
+            uiExpectedCRC |= 1;
+            if (pResponse->uiCrc7 == uiExpectedCRC)
+            {
+                calculate_status(pStatus, pResponse);
+                return true;
+            }
+        }
+    }
+    return false;
+}

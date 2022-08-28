@@ -176,7 +176,7 @@ struct SSDCSD
 
 bool sd_cmd9_send_csd(SSDCardPins* pPins, uint16_t uiAddress, SSDCSD* pCSD);
 bool sd_cmd7_select_or_deselect_card(SSDCardPins* pPins, uint16_t uiAddress, SSDCardStatus* pStatus);
-bool sd_cmd17_read_single_block_narrow(SSDCardPins* pPins, int iBlock, int iExpectedBytes, uint8_t* pvData);
+bool sd_cmd17_read_single_block_narrow(SSDCardPins* pPins, int iBlock, int iExpectedBytes, uint8_t* pvData, SSDCardStatus* pStatus);
 
 
 struct SSDFunctionSwitchStatus
@@ -207,11 +207,11 @@ struct SSDFunctionSwitchStatus
 };
 
 
-bool sd_cmd6_switch(SSDCardPins* pPins, bool bSwitch, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode, SSDFunctionSwitchStatus* pFunctionSwitchStatus);
-bool check_sd_cmd6_switch(SSDCardPins* pPins, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode, SSDFunctionSwitchStatus* pFunctionSwitchStatus);
+bool sd_cmd6_switch(SSDCardPins* pPins, bool bSwitch, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode, SSDCardStatus* pStatus, SSDFunctionSwitchStatus* pFunctionSwitchStatus);
+bool check_sd_cmd6_switch(SSDCardPins* pPins, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode, SSDCardStatus* pStatus, SSDFunctionSwitchStatus* pFunctionSwitchStatus);
 bool sd_acmd6_set_bus_width(SSDCardPins* pPins, u_int16_t uiAddress, u_int8_t uiBusWidth, SSDCardStatus* pStatus);
-bool sd_cmd17_read_single_block_wide(SSDCardPins* pPins, int iBlock, int iExpectedBytes, uint8_t* pvData);
-
+bool sd_cmd17_read_single_block_wide(SSDCardPins* pPins, int iBlock, int iExpectedBytes, uint8_t* pvData, SSDCardStatus* pStatus);
+bool sd_cmd_23_set_block_count(SSDCardPins* pPins, int iCount, SSDCardStatus* pStatus);
 
 #endif // #ifndef __SD_CARD_H__
 
