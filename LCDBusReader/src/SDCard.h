@@ -212,6 +212,8 @@ bool check_sd_cmd6_switch(SSDCardPins* pPins, uint8_t uiPowerLimit, uint8_t uiDr
 bool sd_acmd6_set_bus_width(SSDCardPins* pPins, u_int16_t uiAddress, u_int8_t uiBusWidth, SSDCardStatus* pStatus);
 bool sd_cmd17_read_single_block_wide(SSDCardPins* pPins, int iBlock, int iExpectedBytes, uint8_t* pvData, SSDCardStatus* pStatus);
 bool sd_cmd_23_set_block_count(SSDCardPins* pPins, int iCount, SSDCardStatus* pStatus);
+bool sd_cmd18_read_multiple_blocks_wide(SSDCardPins* pPins, int iStartBlock, int iExpectedBlocks, int iBlockLength, uint8_t* pvData, SSDCardStatus* pStatus);
+
 
 #endif // #ifndef __SD_CARD_H__
 

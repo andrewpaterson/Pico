@@ -14,6 +14,9 @@
 #include "HexToMem.h"
 
 
+int     giDelay;
+
+
 void blink_led(int iMicrosecondDelay)
 {
     bool bLed = true;
@@ -185,16 +188,14 @@ int get_snes_button(uint16_t uiButtons)
     return 0;
 }
 
-int     giDelay;
-
 
 void do_block_reads(SSDCardPins* pPins, uint16_t uiAddress)
 {
     uint8_t         aData[512];
     bool            bResult;
     SSDCardStatus   sStatus;
-    uint8_t         aMultiData[512 * 14];
-    uint8_t         aMultiDataExpected[512 * 14];
+    uint8_t         aMultiData[512 * 7];
+    uint8_t         aMultiDataExpected[512 * 7];
 
     memset(aData, 0xff, 512);
     bResult = sd_cmd17_read_single_block_narrow(pPins, 41024, 512, aData, &sStatus);
@@ -207,21 +208,37 @@ void do_block_reads(SSDCardPins* pPins, uint16_t uiAddress)
             if (bResult)
             {
                 memset(aData, 0xff, 512);
-                bool bResult = sd_cmd17_read_single_block_wide(pPins, 41024, 512, aData, &sStatus);
+                bResult = sd_cmd17_read_single_block_wide(pPins, 41024, 512, aData, &sStatus);
                 if (bResult)
                 {
                     int iCmp = memcmp(aData, "John West wrote:", 16);
                     if (iCmp == 0)
                     {
-                        memset(aMultiDataExpected, 0xFF, 512 * 14);
-                        read_hex_string_into_memory(aMultiDataExpected, 512 * 14, gszSDTestExpectedData);
-                        blink_led(25'000);
+                        memset(aMultiDataExpected, 0xFF, 512 * 7);
+                        read_hex_string_into_memory(aMultiDataExpected, 512 * 7, gszSDTestExpectedData);
+                        
+                        bResult = sd_cmd_23_set_block_count(pPins, 7, &sStatus);
+                        if (bResult)
+                        {
+                            memset(aMultiData, 0xCC, 512 * 7);
+                            bResult = sd_cmd18_read_multiple_blocks_wide(pPins, 41024, 7, 512, aMultiData, &sStatus);
+                            if (bResult)
+                            {
+                                int iCmp = memcmp(aMultiData, aMultiDataExpected, 512 * 7);
+                               if (iCmp == 0)
+                                {
+                                    blink_led(25'000);
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
+    blink_led(200'000);
 }
+
 
 int main() 
 {

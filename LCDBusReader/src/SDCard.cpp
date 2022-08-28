@@ -1333,7 +1333,7 @@ bool sd_cmd17_read_single_block_wide(SSDCardPins* pPins, int iBlock, int iExpect
             {
                 calculate_status(pStatus, pResponse);
                 bResult = receive_data_wide(pPins, iExpectedBytes, pvData);
-                return true;
+                return bResult;
             }
         }
     }
@@ -1369,3 +1369,44 @@ bool sd_cmd_23_set_block_count(SSDCardPins* pPins, int iCount, SSDCardStatus* pS
     }
     return false;
 }
+
+
+bool sd_cmd18_read_multiple_blocks_wide(SSDCardPins* pPins, int iStartBlock, int iExpectedBlocks, int iBlockLength, uint8_t* pvData, SSDCardStatus* pStatus)
+{
+    uint8_t aCommand[6];
+    uint8_t aResponse[6];
+    bool    bResult;
+
+    build_command(aCommand, 18, iStartBlock);
+    send_command(pPins, aCommand);
+    sd_clock_tick(pPins, 4, GPIO_IN);
+
+    bResult = receive_response(pPins, 6, aResponse);
+    if (bResult)
+    {
+        SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
+        if (pResponse->uiCmd == 18)
+        {
+            uint8_t uiExpectedCRC = crc7(aResponse, 5);
+            uiExpectedCRC <<= 1;
+            uiExpectedCRC |= 1;
+            if (pResponse->uiCrc7 == uiExpectedCRC)
+            {
+                calculate_status(pStatus, pResponse);
+
+                for (int iCount = 0; iCount < iExpectedBlocks; iCount++)
+                {
+                    bResult = receive_data_wide(pPins, iBlockLength, pvData);
+                    if (!bResult)
+                    {
+                        return false;
+                    }
+                    pvData = pvData + iBlockLength;
+                }
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
