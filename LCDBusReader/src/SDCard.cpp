@@ -5,6 +5,31 @@
 #define  SD_SLEEP 1
 
 
+void SSDCardPins::Init(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1Pin, int iSDDat2Pin, int iSDDat3Pin)
+{
+    this->iSDClkPin = iSDClkPin;
+    this->iSDCmdPin = iSDCmdPin;
+
+    this->iSDDat0Pin = iSDDat0Pin;
+    this->iSDDat1Pin = iSDDat1Pin;
+    this->iSDDat2Pin = iSDDat2Pin;
+    this->iSDDat3Pin = iSDDat3Pin;
+}
+
+
+void sd_card_init(SSDCardPins* pPins)
+{
+    gpio_init(pPins->iSDClkPin);
+    gpio_set_dir(pPins->iSDClkPin, GPIO_OUT);
+
+    gpio_init(pPins->iSDCmdPin);
+    gpio_init(pPins->iSDDat0Pin);
+    gpio_init(pPins->iSDDat1Pin);
+    gpio_init(pPins->iSDDat2Pin);
+    gpio_init(pPins->iSDDat3Pin);
+}
+
+
 static uint8_t crc7(uint8_t uiCRC, uint8_t uiData) 
 {
 	uiCRC ^= uiData;
@@ -71,11 +96,11 @@ void build_command(uint8_t* pvDest, int iCommand, int iArgument)
 }
 
 
-bool send_command(uint8_t* pvDest, int iSDClkPin, int iSDCmdPin)
+bool send_command(SSDCardPins* pPins, uint8_t* pvDest)
 {
-    gpio_set_dir(iSDCmdPin, GPIO_OUT);
-    gpio_put(iSDClkPin, false);
-    gpio_put(iSDCmdPin, true);
+    gpio_set_dir(pPins->iSDCmdPin, GPIO_OUT);
+    gpio_put(pPins->iSDClkPin, false);
+    gpio_put(pPins->iSDCmdPin, true);
     sleep_us_high_power(SD_SLEEP);
     for (int iByte = 0; iByte <= 5; iByte++)
     {
@@ -84,17 +109,17 @@ bool send_command(uint8_t* pvDest, int iSDClkPin, int iSDCmdPin)
         {
             bool bBit = uiByte & 0x80;
             uiByte <<= 1;
-            gpio_put(iSDClkPin, false);
-            gpio_put(iSDCmdPin, bBit);
+            gpio_put(pPins->iSDClkPin, false);
+            gpio_put(pPins->iSDCmdPin, bBit);
             sleep_us_high_power(SD_SLEEP);
-            gpio_put(iSDClkPin, true);
+            gpio_put(pPins->iSDClkPin, true);
             sleep_us_high_power(SD_SLEEP);
         }
     }
 }
 
 
-bool read_response(int iSDClkPin, int iSDCmdPin, int iExpectedBytes, uint8_t* pvResponse)
+bool read_response(SSDCardPins* pPins, int iExpectedBytes, uint8_t* pvResponse)
 {
     int iBit = 6;
     for (int iByte = 0; iByte < iExpectedBytes; iByte++)
@@ -103,10 +128,10 @@ bool read_response(int iSDClkPin, int iSDCmdPin, int iExpectedBytes, uint8_t* pv
         for (; iBit >= 0; iBit--)
         {
             pvResponse[iByte] <<= 1;
-            gpio_put(iSDClkPin, false);
+            gpio_put(pPins->iSDClkPin, false);
             sleep_us_high_power(SD_SLEEP);
-            gpio_put(iSDClkPin, true);
-            bool bBit = gpio_get(iSDCmdPin);
+            gpio_put(pPins->iSDClkPin, true);
+            bool bBit = gpio_get(pPins->iSDCmdPin);
             sleep_us_high_power(SD_SLEEP);
             pvResponse[iByte] |= bBit;
         }
@@ -116,57 +141,57 @@ bool read_response(int iSDClkPin, int iSDCmdPin, int iExpectedBytes, uint8_t* pv
 }
 
 
-void sd_clock_tick(int iSDClkPin, int iSDCmdPin, int iFullCycles, int iCmdDir)
+void sd_clock_tick(SSDCardPins* pPins, int iFullCycles, int iCmdDir)
 {
-    if (gpio_get_dir(iSDCmdPin) != iCmdDir)
+    if (gpio_get_dir(pPins->iSDCmdPin) != iCmdDir)
     {
-        gpio_set_dir(iSDCmdPin, iCmdDir);
+        gpio_set_dir(pPins->iSDCmdPin, iCmdDir);
     }
 
     if (iCmdDir == GPIO_OUT)
     {
-        gpio_put(iSDCmdPin, true);
+        gpio_put(pPins->iSDCmdPin, true);
     }
 
     for (int i = 0; i < iFullCycles; i++)
     {
-        gpio_put(iSDClkPin, false);
+        gpio_put(pPins->iSDClkPin, false);
         sleep_us_high_power(SD_SLEEP);
-        gpio_put(iSDClkPin, true);
+        gpio_put(pPins->iSDClkPin, true);
         sleep_us_high_power(SD_SLEEP);
     }
 }
 
 
-void sd_initial_tick(int iSDClkPin, int iSDCmdPin)
+void sd_initial_tick(SSDCardPins* pPins)
 {
-    gpio_set_dir(iSDCmdPin, GPIO_OUT);
-    gpio_put(iSDCmdPin, true);
+    gpio_set_dir(pPins->iSDCmdPin, GPIO_OUT);
+    gpio_put(pPins->iSDCmdPin, true);
 
     for (int i = 0; i < 80; i++)
     {
-        gpio_put(iSDClkPin, false);
+        gpio_put(pPins->iSDClkPin, false);
         sleep_us_high_power(SD_SLEEP);
-        gpio_put(iSDClkPin, true);
+        gpio_put(pPins->iSDClkPin, true);
         sleep_us_high_power(SD_SLEEP);
     }
 }
 
 
-bool receive_response(int iSDClkPin, int iSDCmdPin, int iExpectedBytes, uint8_t* pvResponse)
+bool receive_response(SSDCardPins* pPins, int iExpectedBytes, uint8_t* pvResponse)
 {
-    if (gpio_get_dir(iSDCmdPin) == GPIO_OUT)
+    if (gpio_get_dir(pPins->iSDCmdPin) == GPIO_OUT)
     {
-        gpio_set_dir(iSDCmdPin, GPIO_IN);
+        gpio_set_dir(pPins->iSDCmdPin, GPIO_IN);
     }
 
     bool bCardTransmit = false;
     for (int i = 0; i < 1000; i++)
     {
-        gpio_put(iSDClkPin, false);
+        gpio_put(pPins->iSDClkPin, false);
         sleep_us_high_power(SD_SLEEP);
-        gpio_put(iSDClkPin, true);
-        bool bBit = gpio_get(iSDCmdPin);
+        gpio_put(pPins->iSDClkPin, true);
+        bool bBit = gpio_get(pPins->iSDCmdPin);
         sleep_us_high_power(SD_SLEEP);
         if (!bBit)
         {
@@ -177,10 +202,10 @@ bool receive_response(int iSDClkPin, int iSDCmdPin, int iExpectedBytes, uint8_t*
 
     if (bCardTransmit)
     {
-        bool bValidResponse = read_response(iSDClkPin, iSDCmdPin, iExpectedBytes, pvResponse);
+        bool bValidResponse = read_response(pPins, iExpectedBytes, pvResponse);
         if (bValidResponse)
         {
-            sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_OUT);
+            sd_clock_tick(pPins, 4, GPIO_OUT);
         }
         return bValidResponse;
     }
@@ -191,20 +216,20 @@ bool receive_response(int iSDClkPin, int iSDCmdPin, int iExpectedBytes, uint8_t*
 }
 
 
-void sd_cmd0_go_idle(int iSDClkPin, int iSDCmdPin, int iSDDat3Pin, bool bSDMode)
+void sd_cmd0_go_idle(SSDCardPins* pPins, bool bSDMode)
 {
     uint8_t aCommand[6];
 
     build_command(aCommand, 0, 0);
     
-    gpio_set_dir(iSDDat3Pin, GPIO_OUT);
-    gpio_put(iSDDat3Pin, !bSDMode);
+    gpio_set_dir(pPins->iSDDat3Pin, GPIO_OUT);
+    gpio_put(pPins->iSDDat3Pin, !bSDMode);
 
-    send_command(aCommand, iSDClkPin, iSDCmdPin);
+    send_command(pPins, aCommand);
 
-    gpio_set_dir(iSDDat3Pin, GPIO_IN);
+    gpio_set_dir(pPins->iSDDat3Pin, GPIO_IN);
 
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 8, GPIO_OUT);
+    sd_clock_tick(pPins, 8, GPIO_OUT);
 }
 
 
@@ -226,17 +251,17 @@ struct SSDResponseR1
 #pragma pack (push)
 
 
-bool sd_cmd8_interface_condition(int iSDClkPin, int iSDCmdPin)
+bool sd_cmd8_interface_condition(SSDCardPins* pPins)
 {
     uint8_t aCommand[6];
     uint8_t aResponse[6];
-    bool bResult;
+    bool    bResult;
 
     build_command(aCommand, 8, 0x000001AA);
-    send_command(aCommand, iSDClkPin, iSDCmdPin);
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+    send_command(pPins, aCommand);
+    sd_clock_tick(pPins, 4, GPIO_IN);
 
-    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, aResponse);
+    bResult = receive_response(pPins, 6, aResponse);
     if (bResult)
     {
         SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
@@ -282,18 +307,18 @@ void calculate_status(SSDCardStatus* pStatus, SSDResponseR1* pResponse)
 }
 
 
-bool sd_cmd55_application_specific(int iSDClkPin, int iSDCmdPin, u_int16_t uiRCA, SSDCardStatus* pStatus)
+bool sd_cmd55_application_specific(SSDCardPins* pPins, u_int16_t uiRCA, SSDCardStatus* pStatus)
 {
     uint8_t aCommand[6];
     uint8_t aResponse[6];
     bool bResult;
 
     build_command(aCommand, 55, uiRCA << 16);
-    send_command(aCommand, iSDClkPin, iSDCmdPin);
+    send_command(pPins, aCommand);
 
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+    sd_clock_tick(pPins, 4, GPIO_IN);
 
-    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, aResponse);
+    bResult = receive_response(pPins, 6, aResponse);
     if (bResult)
     {   
         SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
@@ -333,16 +358,16 @@ struct SSDResponseR3
 #pragma pack (pop)
 
 
-bool sd_cmd41_operating_condition(int iSDClkPin, int iSDCmdPin, uint8_t* paResponse)
+bool sd_cmd41_operating_condition(SSDCardPins* pPins, uint8_t* paResponse)
 {
     uint8_t aCommand[6];
     bool bResult;
 
     build_command(aCommand, 41, 0x40100000);
-    send_command(aCommand, iSDClkPin, iSDCmdPin);
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+    send_command(pPins, aCommand);
+    sd_clock_tick(pPins, 4, GPIO_IN);
 
-    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, paResponse);
+    bResult = receive_response(pPins, 6, paResponse);
     if (bResult)
     {
         SSDResponseR3* pResponse = (SSDResponseR3*)paResponse;
@@ -356,19 +381,19 @@ bool sd_cmd41_operating_condition(int iSDClkPin, int iSDCmdPin, uint8_t* paRespo
 }
 
 
-bool sd_acmd41_application_operating_condition(int iSDClkPin, int iSDCmdPin, u_int16_t uiRCA, SSDOCR* pOCR)
+bool sd_acmd41_application_operating_condition(SSDCardPins* pPins, u_int16_t uiRCA, SSDOCR* pOCR)
 {
     uint8_t         aResponse[6];
     bool            bResult;
     SSDCardStatus   sStatus;    
 
-    bResult = sd_cmd55_application_specific(iSDClkPin, iSDCmdPin, 0, &sStatus);
+    bResult = sd_cmd55_application_specific(pPins, 0, &sStatus);
     if (!bResult)
     {
         return false;
     }
 
-    bResult = sd_cmd41_operating_condition(iSDClkPin, iSDCmdPin, aResponse);
+    bResult = sd_cmd41_operating_condition(pPins, aResponse);
     if (!bResult)
     {
         return false;
@@ -397,13 +422,13 @@ bool sd_acmd41_application_operating_condition(int iSDClkPin, int iSDCmdPin, u_i
 }
 
 
-bool repeat_sd_acmd41_application_operating_condition(int iSDClkPin, int iSDCmdPin, u_int16_t uiRCA, SSDOCR* pOCR)
+bool repeat_sd_acmd41_application_operating_condition(SSDCardPins* pPins, u_int16_t uiRCA, SSDOCR* pOCR)
 {
     bool bResult;
 
     for (int iCount = 0; iCount < 1000; iCount++)
     {
-        bResult = sd_acmd41_application_operating_condition(iSDClkPin, iSDCmdPin, 0, pOCR);
+        bResult = sd_acmd41_application_operating_condition(pPins, 0, pOCR);
         if (bResult)
         {
             if (pOCR->bDonePoweringOn)
@@ -443,17 +468,17 @@ struct SSDResponseR2CID
 #pragma pack (pop)
 
 
-bool sd_cmd2_send_cid(int iSDClkPin, int iSDCmdPin, SSDCID* pCID)
+bool sd_cmd2_send_cid(SSDCardPins* pPins, SSDCID* pCID)
 {
     uint8_t aCommand[6];
     uint8_t aResponse[17];
-    bool bResult;
+    bool    bResult;
 
     build_command(aCommand, 2, 0);
-    send_command(aCommand, iSDClkPin, iSDCmdPin);
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+    send_command(pPins, aCommand);
+    sd_clock_tick(pPins, 4, GPIO_IN);
 
-    bResult = receive_response(iSDClkPin, iSDCmdPin, 17, aResponse);
+    bResult = receive_response(pPins, 17, aResponse);
     if (bResult)
     {
         SSDResponseR2CID* pResponse = (SSDResponseR2CID*)aResponse;
@@ -502,17 +527,17 @@ struct SSDResponseR6
 #pragma pack (pop)
 
 
-bool sd_cmd3_publish_relative_address(int iSDClkPin, int iSDCmdPin, uint16_t* puiAddress, SSDR6Status* pStatus)
+bool sd_cmd3_publish_relative_address(SSDCardPins* pPins, uint16_t* puiAddress, SSDR6Status* pStatus)
 {
     uint8_t aCommand[6];
     uint8_t aResponse[6];
-    bool bResult;
+    bool    bResult;
 
     build_command(aCommand, 3, 0);
-    send_command(aCommand, iSDClkPin, iSDCmdPin);
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+    send_command(pPins, aCommand);
+    sd_clock_tick(pPins, 4, GPIO_IN);
 
-    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, aResponse);
+    bResult = receive_response(pPins, 6, aResponse);
     if (bResult)
     {
         SSDResponseR6* pResponse = (SSDResponseR6*)aResponse;
@@ -738,17 +763,17 @@ struct SSDResponseR2CSD
 #pragma pack (pop)
 
 
-bool sd_cmd9_send_csd(int iSDClkPin, int iSDCmdPin, uint16_t uiAddress, SSDCSD* pCSD)
+bool sd_cmd9_send_csd(SSDCardPins* pPins, uint16_t uiAddress, SSDCSD* pCSD)
 {
     uint8_t aCommand[6];
     uint8_t aResponse[17];
     bool bResult;
 
     build_command(aCommand, 9, address_argument(uiAddress));
-    send_command(aCommand, iSDClkPin, iSDCmdPin);
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+    send_command(pPins, aCommand);
+    sd_clock_tick(pPins, 4, GPIO_IN);
 
-    bResult = receive_response(iSDClkPin, iSDCmdPin, 17, aResponse);
+    bResult = receive_response(pPins, 17, aResponse);
     if (bResult)
     {
         SSDResponseR2CSD* pResponse = (SSDResponseR2CSD*)aResponse;
@@ -830,17 +855,17 @@ bool sd_cmd9_send_csd(int iSDClkPin, int iSDCmdPin, uint16_t uiAddress, SSDCSD* 
 }
 
 
-bool sd_cmd7_select_or_deselect_card(int iSDClkPin, int iSDCmdPin, uint16_t uiAddress, SSDCardStatus* pStatus)
+bool sd_cmd7_select_or_deselect_card(SSDCardPins* pPins, uint16_t uiAddress, SSDCardStatus* pStatus)
 {
     uint8_t aCommand[6];
     uint8_t aResponse[6];
     bool    bResult;
 
     build_command(aCommand, 7, address_argument(uiAddress));
-    send_command(aCommand, iSDClkPin, iSDCmdPin);
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+    send_command(pPins, aCommand);
+    sd_clock_tick(pPins, 4, GPIO_IN);
 
-    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, aResponse);
+    bResult = receive_response(pPins, 6, aResponse);
     if (bResult)
     {
         SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
@@ -860,7 +885,7 @@ bool sd_cmd7_select_or_deselect_card(int iSDClkPin, int iSDCmdPin, uint16_t uiAd
 }
 
 
-bool read_data_narrow(int iSDClkPin, int iSDDat0Pin, int iExpectedBytes, uint8_t* pvData)
+bool read_data_narrow(SSDCardPins* pPins, int iExpectedBytes, uint8_t* pvData)
 {
     for (int iByte = 0; iByte < iExpectedBytes; iByte++)
     {
@@ -869,12 +894,12 @@ bool read_data_narrow(int iSDClkPin, int iSDDat0Pin, int iExpectedBytes, uint8_t
         {
             pvData[iByte] <<= 1;
 
-            gpio_put(iSDClkPin, false);
+            gpio_put(pPins->iSDClkPin, false);
             sleep_us_high_power(0);
 
-            bool bBit = gpio_get(iSDDat0Pin);
+            bool bBit = gpio_get(pPins->iSDDat0Pin);
 
-            gpio_put(iSDClkPin, true);
+            gpio_put(pPins->iSDClkPin, true);
             sleep_us_high_power(0);
 
             pvData[iByte] |= bBit;
@@ -884,20 +909,20 @@ bool read_data_narrow(int iSDClkPin, int iSDDat0Pin, int iExpectedBytes, uint8_t
 }
 
 
-bool wait_for_transmit(int iSDClkPin, int iSDDatPin)
+bool wait_for_transmit_narrow(SSDCardPins* pPins)
 {
-    if (gpio_get_dir(iSDDatPin) == GPIO_OUT)
+    if (gpio_get_dir(pPins->iSDDat0Pin) == GPIO_OUT)
     {
-        gpio_set_dir(iSDDatPin, GPIO_IN);
+        gpio_set_dir(pPins->iSDDat0Pin, GPIO_IN);
     }
 
     bool  bCardTransmit = false;
     for (int i = 0; i < 2000; i++)
     {
-        gpio_put(iSDClkPin, false);
+        gpio_put(pPins->iSDClkPin, false);
         sleep_us_high_power(SD_SLEEP);
-        gpio_put(iSDClkPin, true);
-        bool bBit = gpio_get(iSDDatPin);
+        gpio_put(pPins->iSDClkPin, true);
+        bool bBit = gpio_get(pPins->iSDDat0Pin);
         sleep_us_high_power(SD_SLEEP);
         if (!bBit)
         {
@@ -910,20 +935,20 @@ bool wait_for_transmit(int iSDClkPin, int iSDDatPin)
 }
 
 
-bool receive_data_narrow(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iExpectedBytes, uint8_t* pvData)
+bool receive_data_narrow(SSDCardPins* pPins, int iExpectedBytes, uint8_t* pvData)
 {
-    bool bCardTransmit = wait_for_transmit(iSDClkPin, iSDDat0Pin);
+    bool bCardTransmit = wait_for_transmit_narrow(pPins);
 
     if (bCardTransmit)
     {
-        bool bValidResponse = read_data_narrow(iSDClkPin, iSDDat0Pin, iExpectedBytes, pvData);
+        bool bValidResponse = read_data_narrow(pPins, iExpectedBytes, pvData);
         if (bValidResponse)
         {
             uint16_t    uiCRC16Read;
             uint8_t     aData[2];
             uint16_t    uiExpectedCRC16;
-            bValidResponse = read_data_narrow(iSDClkPin, iSDDat0Pin, 2, aData);
-            sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_OUT);
+            bValidResponse = read_data_narrow(pPins, 2, aData);
+            sd_clock_tick(pPins, 4, GPIO_OUT);
             uiCRC16Read = (aData[0] << 8) | aData[1];
             if (bValidResponse)
             {
@@ -932,7 +957,6 @@ bool receive_data_narrow(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iExpe
                 {
                     return true;
                 }
-
             }
         }
     }
@@ -940,17 +964,17 @@ bool receive_data_narrow(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iExpe
 }
 
 
-bool sd_cmd17_read_single_block_narrow(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iBlock, int iExpectedBytes, uint8_t* pvData)
+bool sd_cmd17_read_single_block_narrow(SSDCardPins* pPins, int iBlock, int iExpectedBytes, uint8_t* pvData)
 {
     uint8_t aCommand[6];
     uint8_t aResponse[6];
     bool    bResult;
 
     build_command(aCommand, 17, iBlock);
-    send_command(aCommand, iSDClkPin, iSDCmdPin);
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+    send_command(pPins, aCommand);
+    sd_clock_tick(pPins, 4, GPIO_IN);
 
-    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, aResponse);
+    bResult = receive_response(pPins, 6, aResponse);
     if (bResult)
     {
         SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
@@ -961,7 +985,7 @@ bool sd_cmd17_read_single_block_narrow(int iSDClkPin, int iSDCmdPin, int iSDDat0
             uiExpectedCRC |= 1;
             if (pResponse->uiCrc7 == uiExpectedCRC)
             {
-                receive_data_narrow(iSDClkPin, iSDCmdPin, iSDDat0Pin, iExpectedBytes, pvData);
+                receive_data_narrow(pPins, iExpectedBytes, pvData);
                 return true;
             }
         }
@@ -970,7 +994,7 @@ bool sd_cmd17_read_single_block_narrow(int iSDClkPin, int iSDCmdPin, int iSDDat0
 }
 
 
-bool sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, bool bSwitch, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode, SSDFunctionSwitchStatus* pFunctionSwitchStatus)
+bool sd_cmd6_switch(SSDCardPins* pPins, bool bSwitch, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode, SSDFunctionSwitchStatus* pFunctionSwitchStatus)
 {
     uint8_t     aCommand[6];
     uint8_t     aResponse[6];
@@ -980,10 +1004,10 @@ bool sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, bool bSwitch, 
 
     uiArgument = bSwitch ? 0x80000000 : 0;
     build_command(aCommand, 6, uiArgument | (uiPowerLimit << 12) | (uiDriveStrength << 8) | (uiCommandSystem << 4) | uiAccessMode);
-    send_command(aCommand, iSDClkPin, iSDCmdPin);
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+    send_command(pPins, aCommand);
+    sd_clock_tick(pPins, 4, GPIO_IN);
 
-    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, aResponse);
+    bResult = receive_response(pPins, 6, aResponse);
     if (bResult)
     {
         SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
@@ -995,7 +1019,7 @@ bool sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, bool bSwitch, 
             if (pResponse->uiCrc7 == uiExpectedCRC)
             {
                 memset(aDataResponse, 0, 512);
-                bResult = receive_data_narrow(iSDClkPin, iSDCmdPin, iSDDat0Pin, 512, aDataResponse);
+                bResult = receive_data_narrow(pPins, 512, aDataResponse);
                 {
                     pFunctionSwitchStatus->uiMaximumCurrentInMilliAmps = aDataResponse[0] << 8 | aDataResponse[1];
 
@@ -1031,11 +1055,11 @@ bool sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, bool bSwitch, 
 }
 
 
-bool check_sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode, SSDFunctionSwitchStatus* pFunctionSwitchStatus)
+bool check_sd_cmd6_switch(SSDCardPins* pPins, uint8_t uiPowerLimit, uint8_t uiDriveStrength, uint8_t uiCommandSystem, uint8_t uiAccessMode, SSDFunctionSwitchStatus* pFunctionSwitchStatus)
 {
     bool bResult;
 
-    bResult = sd_cmd6_switch(iSDClkPin, iSDCmdPin, iSDDat0Pin, false, uiPowerLimit, uiDriveStrength, uiCommandSystem, uiAccessMode, pFunctionSwitchStatus);
+    bResult = sd_cmd6_switch(pPins, false, uiPowerLimit, uiDriveStrength, uiCommandSystem, uiAccessMode, pFunctionSwitchStatus);
     if (!bResult)
     {
         return false;
@@ -1074,17 +1098,17 @@ bool check_sd_cmd6_switch(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, uint8_t 
 }
 
 
-bool sd_cmd6_set_bus_width(int iSDClkPin, int iSDCmdPin, u_int8_t uiBusWidth, SSDCardStatus* pStatus)
+bool sd_cmd6_set_bus_width(SSDCardPins* pPins, uint8_t uiBusWidth, SSDCardStatus* pStatus)
 {
-    uint8_t         aCommand[6];
-    uint8_t         aResponse[6];
-    bool            bResult;
+    uint8_t aCommand[6];
+    uint8_t aResponse[6];
+    bool    bResult;
 
     build_command(aCommand, 6, uiBusWidth);
-    send_command(aCommand, iSDClkPin, iSDCmdPin);
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+    send_command(pPins, aCommand);
+    sd_clock_tick(pPins, 4, GPIO_IN);
 
-    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, aResponse);
+    bResult = receive_response(pPins, 6, aResponse);
     if (bResult)
     {
         SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
@@ -1104,18 +1128,18 @@ bool sd_cmd6_set_bus_width(int iSDClkPin, int iSDCmdPin, u_int8_t uiBusWidth, SS
 }
 
 
-bool sd_acmd6_set_bus_width(int iSDClkPin, int iSDCmdPin, u_int16_t uiAddress, u_int8_t uiBusWidth, SSDCardStatus* pStatus)
+bool sd_acmd6_set_bus_width(SSDCardPins* pPins, u_int16_t uiAddress, uint8_t uiBusWidth, SSDCardStatus* pStatus)
 {
     uint8_t aResponse[6];
     bool    bResult;
 
-    bResult = sd_cmd55_application_specific(iSDClkPin, iSDCmdPin, uiAddress, pStatus);
+    bResult = sd_cmd55_application_specific(pPins, uiAddress, pStatus);
     if (!bResult)
     {
         return false;
     }
 
-    bResult = sd_cmd6_set_bus_width(iSDClkPin, iSDCmdPin, uiBusWidth, pStatus);
+    bResult = sd_cmd6_set_bus_width(pPins, uiBusWidth, pStatus);
     if (!bResult)
     {
         return false;
@@ -1125,22 +1149,22 @@ bool sd_acmd6_set_bus_width(int iSDClkPin, int iSDCmdPin, u_int16_t uiAddress, u
 }
 
 
-bool read_data_wide(int iSDClkPin, int iSDDat0Pin, int iSDDat1Pin, int iSDDat2Pin, int iSDDat3Pin, int iExpectedBytes, uint8_t* pvData)
+bool read_data_wide(SSDCardPins* pPins, int iExpectedBytes, uint8_t* pvData)
 {
     for (int iByte = 0; iByte < iExpectedBytes; iByte++)
     {
         pvData[iByte] = 0;
         for (int iBit = 1; iBit >= 0; iBit--)
         {
-            gpio_put(iSDClkPin, false);
+            gpio_put(pPins->iSDClkPin, false);
             sleep_us_high_power(0);
 
-            bool bBit3 = gpio_get(iSDDat3Pin);
-            bool bBit2 = gpio_get(iSDDat2Pin);
-            bool bBit1 = gpio_get(iSDDat1Pin);
-            bool bBit0 = gpio_get(iSDDat0Pin);
+            bool bBit3 = gpio_get(pPins->iSDDat3Pin);
+            bool bBit2 = gpio_get(pPins->iSDDat2Pin);
+            bool bBit1 = gpio_get(pPins->iSDDat1Pin);
+            bool bBit0 = gpio_get(pPins->iSDDat0Pin);
 
-            gpio_put(iSDClkPin, true);
+            gpio_put(pPins->iSDClkPin, true);
             sleep_us_high_power(0);
 
             pvData[iByte] <<= 1;
@@ -1181,35 +1205,35 @@ void unstripe_data(uint8_t* pUnstripedData, int iOffset, int iExpectedBytes, uin
 }
 
 
-bool wait_for_transmit(int iSDClkPin, int iSDDat0Pin, int iSDDat1Pin, int iSDDat2Pin, int iSDDat3Pin)
+bool wait_for_transmit_wide(SSDCardPins* pPins)
 {
-    if (gpio_get_dir(iSDDat1Pin) == GPIO_OUT)
+    if (gpio_get_dir(pPins->iSDDat1Pin) == GPIO_OUT)
     {
-        gpio_set_dir(iSDDat1Pin, GPIO_IN);
+        gpio_set_dir(pPins->iSDDat1Pin, GPIO_IN);
     }
-    if (gpio_get_dir(iSDDat2Pin) == GPIO_OUT)
+    if (gpio_get_dir(pPins->iSDDat2Pin) == GPIO_OUT)
     {
-        gpio_set_dir(iSDDat2Pin, GPIO_IN);
+        gpio_set_dir(pPins->iSDDat2Pin, GPIO_IN);
     }
-    if (gpio_get_dir(iSDDat3Pin) == GPIO_OUT)
+    if (gpio_get_dir(pPins->iSDDat3Pin) == GPIO_OUT)
     {
-        gpio_set_dir(iSDDat3Pin, GPIO_IN);
+        gpio_set_dir(pPins->iSDDat3Pin, GPIO_IN);
     }
-    if (gpio_get_dir(iSDDat0Pin) == GPIO_OUT)
+    if (gpio_get_dir(pPins->iSDDat0Pin) == GPIO_OUT)
     {
-        gpio_set_dir(iSDDat0Pin, GPIO_IN);
+        gpio_set_dir(pPins->iSDDat0Pin, GPIO_IN);
     }
 
     bool  bCardTransmit = false;
     for (int i = 0; i < 2000; i++)
     {
-        gpio_put(iSDClkPin, false);
+        gpio_put(pPins->iSDClkPin, false);
         sleep_us_high_power(SD_SLEEP);
-        bool bBit0 = gpio_get(iSDDat0Pin);
-        bool bBit1 = gpio_get(iSDDat1Pin);
-        bool bBit2 = gpio_get(iSDDat2Pin);
-        bool bBit3 = gpio_get(iSDDat3Pin);
-        gpio_put(iSDClkPin, true);
+        bool bBit0 = gpio_get(pPins->iSDDat0Pin);
+        bool bBit1 = gpio_get(pPins->iSDDat1Pin);
+        bool bBit2 = gpio_get(pPins->iSDDat2Pin);
+        bool bBit3 = gpio_get(pPins->iSDDat3Pin);
+        gpio_put(pPins->iSDClkPin, true);
         sleep_us_high_power(SD_SLEEP);
         if (!bBit3 && !bBit2 && !bBit1 && !bBit0)
         {
@@ -1222,7 +1246,7 @@ bool wait_for_transmit(int iSDClkPin, int iSDDat0Pin, int iSDDat1Pin, int iSDDat
 }
 
 
-bool receive_data_wide(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1Pin, int iSDDat2Pin, int iSDDat3Pin, int iExpectedBytes, uint8_t* pvData)
+bool receive_data_wide(SSDCardPins* pPins, int iExpectedBytes, uint8_t* pvData)
 {
     uint16_t    uiCRC16Read;
     uint8_t     aCRC[8];
@@ -1230,15 +1254,15 @@ bool receive_data_wide(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1
     uint8_t     aUnstripedCRC[2];
     uint16_t    uiExpectedCRC16;
 
-    bool bCardTransmit = wait_for_transmit(iSDClkPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin);
+    bool bCardTransmit = wait_for_transmit_wide(pPins);
 
     if (bCardTransmit)
     {
-        bool bValidResponse = read_data_wide(iSDClkPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin, iExpectedBytes, pvData);
+        bool bValidResponse = read_data_wide(pPins, iExpectedBytes, pvData);
         if (bValidResponse)
         {
-            bValidResponse = read_data_wide(iSDClkPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin, 8, aCRC);
-            sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_OUT);
+            bValidResponse = read_data_wide(pPins, 8, aCRC);
+            sd_clock_tick(pPins, 4, GPIO_OUT);
             
             if (bValidResponse)
             {
@@ -1284,17 +1308,17 @@ bool receive_data_wide(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1
 }
 
 
-bool sd_cmd17_read_single_block_wide(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1Pin, int iSDDat2Pin, int iSDDat3Pin, int iBlock, int iExpectedBytes, uint8_t* pvData)
+bool sd_cmd17_read_single_block_wide(SSDCardPins* pPins, int iBlock, int iExpectedBytes, uint8_t* pvData)
 {
     uint8_t aCommand[6];
     uint8_t aResponse[6];
     bool    bResult;
 
     build_command(aCommand, 17, iBlock);
-    send_command(aCommand, iSDClkPin, iSDCmdPin);
-    sd_clock_tick(iSDClkPin, iSDCmdPin, 4, GPIO_IN);
+    send_command(pPins, aCommand);
+    sd_clock_tick(pPins, 4, GPIO_IN);
 
-    bResult = receive_response(iSDClkPin, iSDCmdPin, 6, aResponse);
+    bResult = receive_response(pPins, 6, aResponse);
     if (bResult)
     {
         SSDResponseR1* pResponse = (SSDResponseR1*)aResponse;
@@ -1305,7 +1329,7 @@ bool sd_cmd17_read_single_block_wide(int iSDClkPin, int iSDCmdPin, int iSDDat0Pi
             uiExpectedCRC |= 1;
             if (pResponse->uiCrc7 == uiExpectedCRC)
             {
-                bResult = receive_data_wide(iSDClkPin, iSDCmdPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin, iExpectedBytes, pvData);
+                bResult = receive_data_wide(pPins, iExpectedBytes, pvData);
             }
         }
     }

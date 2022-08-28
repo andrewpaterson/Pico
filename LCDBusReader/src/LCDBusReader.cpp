@@ -188,7 +188,7 @@ int get_snes_button(uint16_t uiButtons)
 int     giDelay;
 
 
-void do_block_reads(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1Pin, int iSDDat2Pin, int iSDDat3Pin, uint16_t uiAddress)
+void do_block_reads(SSDCardPins* pPins, uint16_t uiAddress)
 {
     uint8_t         aData[512];
     bool            bResult;
@@ -197,22 +197,23 @@ void do_block_reads(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1Pin
     uint8_t         aMultiDataExpected[512 * 14];
 
     memset(aData, 0xff, 512);
-    bResult = sd_cmd17_read_single_block_narrow(iSDClkPin, iSDCmdPin, iSDDat0Pin, 41024, 512, aData);
+    bResult = sd_cmd17_read_single_block_narrow(pPins, 41024, 512, aData);
     if (bResult)
     {
         int iCmp = memcmp(aData, "John West wrote:", 16);
         if (iCmp == 0)
         {
-            bResult = sd_acmd6_set_bus_width(iSDClkPin, iSDCmdPin, uiAddress, 2, &sStatus);
+            bResult = sd_acmd6_set_bus_width(pPins, uiAddress, 2, &sStatus);
             if (bResult)
             {
                 memset(aData, 0xff, 512);
-                bool bResult = sd_cmd17_read_single_block_wide(iSDClkPin, iSDCmdPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin, 41024, 512, aData);
+                bool bResult = sd_cmd17_read_single_block_wide(pPins, 41024, 512, aData);
                 if (bResult)
                 {
                     int iCmp = memcmp(aData, "John West wrote:", 16);
                     if (iCmp == 0)
                     {
+                        memset(aMultiDataExpected, 0xFF, 512 * 14);
                         read_hex_string_into_memory(aMultiDataExpected, 512 * 14, gszSDTestExpectedData);
                         blink_led(25'000);
                     }
@@ -222,13 +223,16 @@ void do_block_reads(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1Pin
     }
 }
 
-
 int main() 
 {
     stdio_init_all();
     gpio_init(25);
     gpio_set_dir(25, GPIO_OUT);
 
+    SSDCardPins sPins;
+
+    sPins.Init(6, 7, 2 ,3 ,4 ,5);
+    sd_card_init(&sPins);
     int iSDDat0Pin = 2;
     int iSDDat1Pin = 3;
     int iSDDat2Pin = 4;
@@ -236,12 +240,6 @@ int main()
 
     int iSDClkPin = 6;
     int iSDCmdPin = 7;
-
-    gpio_init(iSDClkPin);
-    gpio_set_dir(iSDClkPin, GPIO_OUT);
-
-    gpio_init(iSDCmdPin);
-    gpio_set_dir(iSDCmdPin, GPIO_OUT);
 
     bool                        bResult;
     SSDOCR                      sOCR;
@@ -252,41 +250,41 @@ int main()
     SSDCardStatus               sStatus;
     SSDFunctionSwitchStatus     sSwitchStatus;
 
-    sd_initial_tick(iSDClkPin, iSDCmdPin);  //A slow 100Khz 80 count tick is important if only one go_idle command is sent.  400Khz is fine if the entire initialistion is restarted.
+    sd_initial_tick(&sPins);  //A slow 100Khz 80 count tick is important if only one go_idle command is sent.  400Khz is fine if the entire initialistion is restarted.
 
     for (int iRestartCount = 1; iRestartCount++;)  //Restarting is necessary only if cmd6 is issued (change power output and maximum clock speed).  This repeats up to 6 times.
     {
-        sd_cmd0_go_idle(iSDClkPin, iSDCmdPin, iSDDat3Pin, false);
+        sd_cmd0_go_idle(&sPins, false);
 
-        bResult = sd_cmd8_interface_condition(iSDClkPin, iSDCmdPin);
+        bResult = sd_cmd8_interface_condition(&sPins);
         if (bResult)
         {
-            bResult = repeat_sd_acmd41_application_operating_condition(iSDClkPin, iSDCmdPin, 0, &sOCR);  //This has repeated up to 260 times before a 'ready' response is returned.
+            bResult = repeat_sd_acmd41_application_operating_condition(&sPins, 0, &sOCR);  //This has repeated up to 260 times before a 'ready' response is returned.
             if (bResult)
             {
-                bResult = sd_cmd2_send_cid(iSDClkPin, iSDCmdPin, &sCID);
+                bResult = sd_cmd2_send_cid(&sPins, &sCID);
                 if (bResult)
                 {
-                    bResult = sd_cmd3_publish_relative_address(iSDClkPin, iSDCmdPin, &uiAddress, &sR6Status);
+                    bResult = sd_cmd3_publish_relative_address(&sPins, &uiAddress, &sR6Status);
                     if (bResult)
                     {
-                        bResult = sd_cmd9_send_csd(iSDClkPin, iSDCmdPin, uiAddress, &sCSD);
+                        bResult = sd_cmd9_send_csd(&sPins, uiAddress, &sCSD);
                         if (bResult)
                         {
                             if (sCSD.iMaxReadBlockLength == 512)
                             {
-                                bResult = sd_cmd7_select_or_deselect_card(iSDClkPin, iSDCmdPin, uiAddress, &sStatus);
+                                bResult = sd_cmd7_select_or_deselect_card(&sPins, uiAddress, &sStatus);
                                 if (bResult)
                                 {
                                     if (sCSD.bCommandClassSwitch)
                                     {
-                                        bResult = sd_cmd6_switch(iSDClkPin, iSDCmdPin, iSDDat0Pin, true, 0x1, 0xF, 0xF, 0x1, &sSwitchStatus);
+                                        bResult = sd_cmd6_switch(&sPins, true, 0x1, 0xF, 0xF, 0x1, &sSwitchStatus);
                                         if (bResult)
                                         {
-                                            bResult = check_sd_cmd6_switch(iSDClkPin, iSDCmdPin, iSDDat0Pin, 0xF, 0xF, 0xF, 0x1, &sSwitchStatus);
+                                            bResult = check_sd_cmd6_switch(&sPins, 0xF, 0xF, 0xF, 0x1, &sSwitchStatus);
                                             if (bResult)
                                             {
-                                                do_block_reads(iSDClkPin, iSDCmdPin, iSDDat0Pin, iSDDat1Pin, iSDDat2Pin, iSDDat3Pin, uiAddress);
+                                                do_block_reads(&sPins, uiAddress);
                                             }
                                         }
                                     }
