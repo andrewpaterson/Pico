@@ -10,6 +10,8 @@
 #include "SPIComm.h"
 #include "LTC6903.h"
 #include "SDCard.h"
+#include "SDCardTest.h"
+#include "HexToMem.h"
 
 
 void blink_led(int iMicrosecondDelay)
@@ -191,6 +193,8 @@ void do_block_reads(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1Pin
     uint8_t         aData[512];
     bool            bResult;
     SSDCardStatus   sStatus;
+    uint8_t         aMultiData[512 * 14];
+    uint8_t         aMultiDataExpected[512 * 14];
 
     memset(aData, 0xff, 512);
     bResult = sd_cmd17_read_single_block_narrow(iSDClkPin, iSDCmdPin, iSDDat0Pin, 41024, 512, aData);
@@ -209,6 +213,7 @@ void do_block_reads(int iSDClkPin, int iSDCmdPin, int iSDDat0Pin, int iSDDat1Pin
                     int iCmp = memcmp(aData, "John West wrote:", 16);
                     if (iCmp == 0)
                     {
+                        read_hex_string_into_memory(aMultiDataExpected, 512 * 14, gszSDTestExpectedData);
                         blink_led(25'000);
                     }
                 }
@@ -223,7 +228,6 @@ int main()
     stdio_init_all();
     gpio_init(25);
     gpio_set_dir(25, GPIO_OUT);
-
 
     int iSDDat0Pin = 2;
     int iSDDat1Pin = 3;

@@ -18,6 +18,7 @@ add_executable(lcd_bus_reader
   src/SPIComm.cpp
   src/LTC6903.cpp
   src/SDCard.cpp
+  src/HexToMem.cpp
 )
 
 target_include_directories(lcd_bus_reader PRIVATE
