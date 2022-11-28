@@ -108,7 +108,7 @@ uint16_t shift_in(S165InPins* psPins)
         uiData = uiData | (bBit ? !psPins->bDataInverted : psPins->bDataInverted);
         sleep_us_high_power(iSleep);
     }
-    gpio_put(psPins->uiClockPin, psPins->bDataOnClockLow);
+     gpio_put(psPins->uiClockPin, psPins->bDataOnClockLow);
     return uiData;
 }
 

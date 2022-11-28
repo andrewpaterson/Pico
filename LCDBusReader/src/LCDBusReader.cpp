@@ -81,10 +81,10 @@ void message(int iCount, char* szDest)
 }
 
 
-void shift_LCD(void)
+void do_shift_LCD(void)
 {
     S595OutPins sPins;
-    sPins.Init(PIN_NOT_SET, 18, 17, 16, PIN_NOT_SET);
+    sPins.Init(PIN_NOT_SET, 22, 21, 20, PIN_NOT_SET);
     init_shift(&sPins);
 
     init_lcd(&sPins);
@@ -107,7 +107,7 @@ void shift_LCD(void)
 }
 
 
-void parallel_LCD(void)
+void do_parallel_LCD(void)
 {
     bool led = true;
 
@@ -189,7 +189,7 @@ int get_snes_button(uint16_t uiButtons)
 }
 
 
-void do_block_reads(SSDCardPins* pPins, uint16_t uiAddress)
+void block_reads(SSDCardPins* pPins, uint16_t uiAddress)
 {
     uint8_t         aData[512];
     bool            bResult;
@@ -239,12 +239,8 @@ void do_block_reads(SSDCardPins* pPins, uint16_t uiAddress)
     blink_led(200'000);
 }
 
-
-int main() 
+void do_sd_card()
 {
-    stdio_init_all();
-    gpio_init(25);
-    gpio_set_dir(25, GPIO_OUT);
 
     SSDCardPins sPins;
 
@@ -301,7 +297,7 @@ int main()
                                             bResult = check_sd_cmd6_switch(&sPins, 0xF, 0xF, 0xF, 0x1, &sStatus, &sSwitchStatus);
                                             if (bResult)
                                             {
-                                                do_block_reads(&sPins, uiAddress);
+                                                block_reads(&sPins, uiAddress);
                                             }
                                         }
                                     }
@@ -313,9 +309,12 @@ int main()
             }
         }
     }
+}
 
 
-    int iSlaveIO = 15;
+void do_uart(void)
+{
+   int iSlaveIO = 15;
 
     gpio_init(iSlaveIO);
     gpio_set_dir(iSlaveIO, GPIO_IN);
@@ -401,5 +400,21 @@ int main()
             bLed = !bLed;
         }
     }
+}
+
+
+void init_io_and_led(void)
+{
+    stdio_init_all();
+    gpio_init(25);
+    gpio_set_dir(25, GPIO_OUT);
+}
+
+
+int main() 
+{
+    init_io_and_led();
+
+    do_shift_LCD();
 }
 
