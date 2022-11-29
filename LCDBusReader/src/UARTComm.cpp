@@ -40,6 +40,7 @@ int     giCurrentMessage = 0;
 int     giValidMessage = -1;
 int     giMessageCharIndex = 0;
 
+
 void uart_receive_irq(void) 
 {
     while (uart_is_readable(uart0)) 

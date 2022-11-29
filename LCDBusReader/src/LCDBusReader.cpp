@@ -14,9 +14,6 @@
 #include "HexToMem.h"
 
 
-int     giDelay;
-
-
 void blink_led(int iMicrosecondDelay)
 {
     bool bLed = true;
@@ -81,10 +78,10 @@ void message(int iCount, char* szDest)
 }
 
 
-void do_shift_LCD(void)
+void do_shift_LCD(uint uiShiftPin, uint uiStorageLatchPin, uint uiDataOutPin)
 {
     S595OutPins sPins;
-    sPins.Init(PIN_NOT_SET, 22, 21, 20, PIN_NOT_SET);
+    sPins.Init(PIN_NOT_SET, uiShiftPin, uiStorageLatchPin, uiDataOutPin, PIN_NOT_SET);
     init_shift(&sPins);
 
     init_lcd(&sPins);
@@ -133,6 +130,18 @@ void do_parallel_LCD(void)
         i++;
     }
 }
+
+
+void do_ltc6903(int pinClk, int pinTx, int pinRx, int pinEnable, int iHertz)
+{
+    SSPIPins    sPins;
+
+    sPins.Init(pinClk, pinTx, pinRx, pinEnable, false);
+    
+    init_spi(&sPins);
+    put_LTC6903_frequency(&sPins, iHertz);
+}
+
 
 int get_snes_button(uint16_t uiButtons)
 {
@@ -312,94 +321,77 @@ void do_sd_card()
 }
 
 
-void do_uart(void)
+
+uart_inst_t* init_uart_inst(int iTxPin, int iRxPin, int iBaudRate)
 {
-   int iSlaveIO = 15;
-
-    gpio_init(iSlaveIO);
-    gpio_set_dir(iSlaveIO, GPIO_IN);
-
-    uart_inst_t* pUart = init_uart(0, 1, 115200 * 4);
+    uart_inst_t* pUart = init_uart(iTxPin, iRxPin, iBaudRate);
     int iIRQ = get_uart_irq(pUart);
 
     irq_set_exclusive_handler(iIRQ, uart_receive_irq);
     irq_set_enabled(iIRQ, true);
     uart_set_irq_enables(pUart, true, false);
 
-    bool bSlave = gpio_get(iSlaveIO);
-    if (bSlave)
-    {
-        giDelay = 1000000;
-    }
-    else
-    {
-        giDelay = 2000000;
-    }
+    return pUart;
+}
 
-    if (!bSlave)
-    {
-        bool bLed = true;
 
-        for (;;)
+void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
+{
+    uart_inst_t* pUart = init_uart_inst(iTxPin, iRxPin, iBaudRate);
+
+    uart_puts(pUart, "Garbage\n");
+    sleep_us_high_power(100'000);
+    uart_puts(pUart, "Fast\n");
+    sleep_us_high_power(1000'000);
+    uart_puts(pUart, "Slow\n");
+    sleep_us_high_power(100'000);
+}
+
+
+void do_uart_slave(int iTxPin, int iRxPin, int iBaudRate)
+{
+    uart_inst_t* pUart = init_uart_inst(iTxPin, iRxPin, iBaudRate);
+
+    bool bLed = true;
+    int iCommandSpeed = 1'000'000;
+    for (;;)
+    {
+        gpio_put(25, bLed);
+
+        int delay = iCommandSpeed;
+
+        uint64_t start = time_us_64();
+        uint64_t expectedEnd = start + delay;
+        uint64_t end = start;
+
+        while (expectedEnd > end)
         {
-            gpio_put(25, bLed);
-            if (bLed)
+            end = time_us_64();
+            char szMessage[256];
+            bool bNewMessage = read_uart_message(szMessage);
+            if (bNewMessage)
             {
-                uart_puts(pUart, "Fast\n");
-            }
-            else
-            {
-                uart_puts(pUart, "Slow\n");
-            }
-            
-            int delay = giDelay;
-
-            uint64_t start = time_us_64();
-            uint64_t expectedEnd = start + delay;
-            uint64_t end = start;
-
-            while (expectedEnd > end)
-            {
-                end = time_us_64();
-            }            
-            bLed = !bLed;
-        }
-    }
-    else
-    {
-        bool bLed = true;
-        for (;;)
-        {
-            gpio_put(25, bLed);
-
-            int delay = giDelay;
-
-            uint64_t start = time_us_64();
-            uint64_t expectedEnd = start + delay;
-            uint64_t end = start;
-
-            while (expectedEnd > end)
-            {
-                end = time_us_64();
-                char szMessage[256];
-                bool bNewMessage = read_uart_message(szMessage);
-                if (bNewMessage)
+                if (memcmp(szMessage, "Fast", 4) == 0)
                 {
-                    giDelay = 20000;
-                    if (memcmp(szMessage, "Fast", 4) == 0)
-                    {
-                        giDelay = 20000;
-                    }
-                    else if (memcmp(szMessage, "Slow", 4) == 0)
-                    {
-                        giDelay = 50000;
-                    }
+                    iCommandSpeed = 25'000;
                 }
-                sleep_us_high_power(1000);
-            }            
-            bLed = !bLed;
-        }
+                else if (memcmp(szMessage, "Slow", 4) == 0)
+                {
+                    iCommandSpeed = 100'000;
+                }
+            }
+            sleep_us_high_power(1000);
+        }            
+        bLed = !bLed;
     }
+}
+
+
+void init_signal(int iPin, bool bValue)
+{
+    gpio_init(iPin);
+    gpio_set_dir(iPin, GPIO_OUT);
+    gpio_put(iPin, bValue);
 }
 
 
@@ -415,6 +407,24 @@ int main()
 {
     init_io_and_led();
 
-    do_shift_LCD();
+    do_uart_slave(0, 1, 115200);
+
+    int iResB = 8;
+    int iNmiB = 9;
+    int iIrqB = 10;
+    int iAbortB = 11;
+    int iBE = 12;
+
+    init_signal(iBE, false);
+    init_signal(iResB, false);
+    init_signal(iNmiB, true);
+    init_signal(iIrqB, true);
+    init_signal(iAbortB, true);
+
+    do_ltc6903(18, 19, 16, 17, 1'500);
+
+    do_uart_master(0, 1, 115200);
+
+    do_shift_LCD(22, 21, 20);
 }
 
