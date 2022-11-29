@@ -12,6 +12,7 @@
 #include "SDCard.h"
 #include "SDCardTest.h"
 #include "HexToMem.h"
+#include "W65C816Bus.h"
 
 
 void blink_led(int iMicrosecondDelay)
@@ -350,10 +351,20 @@ void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
 
 void do_uart_slave(int iTxPin, int iRxPin, int iBaudRate)
 {
+    SW65C816Pins    sPins;
+
     uart_inst_t* pUart = init_uart_inst(iTxPin, iRxPin, iBaudRate);
 
+    sPins.Init( /* Data Pins */ 2, 3, 4, 5, 6, 7, 8, 9,
+                /* Addr Pins */ 17, 16, 15, 14, 13, 12, 11, 10,
+                                18, 19, 20, 21, 22, 26, 27, 28,
+                                PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET);
+    w65_init(&sPins);
+
     bool bLed = true;
-    int iCommandSpeed = 1'000'000;
+    int iCommandSpeed = 1000000;
+    int iData = 0;
+    int iAddress = 0;
     for (;;)
     {
         gpio_put(25, bLed);
@@ -369,6 +380,7 @@ void do_uart_slave(int iTxPin, int iRxPin, int iBaudRate)
             end = time_us_64();
             char szMessage[256];
             bool bNewMessage = read_uart_message(szMessage);
+            bool bMessageUnderstood = false;
             if (bNewMessage)
             {
                 if (memcmp(szMessage, "Fast", 4) == 0)
@@ -377,11 +389,20 @@ void do_uart_slave(int iTxPin, int iRxPin, int iBaudRate)
                 }
                 else if (memcmp(szMessage, "Slow", 4) == 0)
                 {
-                    iCommandSpeed = 100'000;
+                    iCommandSpeed = 50'000;
+                }
+
+                if (memcmp(szMessage, "IO:-", 4) == 0)
+                {
+
+                    w65_disable_io(&sPins);
                 }
             }
-            sleep_us_high_power(1000);
-        }            
+            sleep_us_high_power(100);
+        } 
+        w65_write(&sPins, iData, iAddress);
+        iData++;
+        iAddress++;
         bLed = !bLed;
     }
 }
