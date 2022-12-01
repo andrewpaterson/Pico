@@ -348,6 +348,63 @@ void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
     sleep_us_high_power(100'000);
 }
 
+bool execute_message(SW65C816Pins* psPins, char* szMessage, int iData, int iAddress)
+{
+    if (memcmp(szMessage, "IO:Z", 4) == 0)
+    {
+        w65_disable_io(psPins);
+    }
+    else if (memcmp(szMessage, "A:", 2) == 0)
+    {
+        iAddress = strtol(&szMessage[2], NULL, 16);
+        if (iAddress >= 0 && iAddress <= 0xFFFF)
+        {
+            write_uart_message(pUart, "OK");
+        }
+        else
+        {
+            write_uart_message(pUart, "B#");
+        }
+    }
+    else if (memcmp(szMessage, "D:", 2) == 0)
+    {
+        iData = strtol(&szMessage[2], NULL, 16);
+        if (iData >= 0 && iData <= 0xFF)
+        {
+            write_uart_message(pUart, "OK");
+        }
+        else
+        {
+            write_uart_message(pUart, "B#");
+        }
+    }
+    else if (memcmp(szMessage, "IO:A", 4) == 0)
+    {
+        w65_address_out_data_in(psPins, iAddress);
+        write_uart_message(pUart, "OK");
+    }
+    else if (memcmp(szMessage, "IO:D+A", 6) == 0)
+    {
+        w65_address_out_data_out(psPins, iData, iAddress);
+        write_uart_message(pUart, "OK");
+    }
+    else if (memcmp(szMessage, "READ", 4) == 0)
+    {
+        iData = w65_read(psPins);
+        if (iData < 0x10)
+        {
+            szMessage[0] = '0';
+            itoa(iData, &szMessage[1], 16);
+        }
+        else
+        {
+            itoa(iData, szMessage, 16);
+        }
+        szMessage[2] = '\n';
+        write_uart_message(pUart, szMessage);
+    }
+}
+
 
 void do_uart_slave(int iTxPin, int iRxPin, int iBaudRate)
 {
@@ -361,10 +418,12 @@ void do_uart_slave(int iTxPin, int iRxPin, int iBaudRate)
                                 PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET);
     w65_init(&sPins);
 
-    bool bLed = true;
-    int iCommandSpeed = 1000000;
-    int iData = 0;
-    int iAddress = 0;
+    bool    bLed = true;
+    int     iCommandSpeed = 250000;
+    int     iData = 0;
+    int     iAddress = 0;
+    char    szMessage[32];
+
     for (;;)
     {
         gpio_put(25, bLed);
@@ -380,29 +439,12 @@ void do_uart_slave(int iTxPin, int iRxPin, int iBaudRate)
             end = time_us_64();
             char szMessage[256];
             bool bNewMessage = read_uart_message(szMessage);
-            bool bMessageUnderstood = false;
             if (bNewMessage)
             {
-                if (memcmp(szMessage, "Fast", 4) == 0)
-                {
-                    iCommandSpeed = 25'000;
-                }
-                else if (memcmp(szMessage, "Slow", 4) == 0)
-                {
-                    iCommandSpeed = 50'000;
-                }
-
-                if (memcmp(szMessage, "IO:-", 4) == 0)
-                {
-
-                    w65_disable_io(&sPins);
-                }
+                execute_message(&sPins, szMessage, iData, iAddress);
             }
-            sleep_us_high_power(100);
-        } 
-        w65_write(&sPins, iData, iAddress);
-        iData++;
-        iAddress++;
+            sleep_us_high_power(10);
+        }
         bLed = !bLed;
     }
 }

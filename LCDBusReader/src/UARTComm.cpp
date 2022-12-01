@@ -1,6 +1,10 @@
 #include <string.h>
 #include "UARTComm.h"
 
+
+#define MAX_UART_MESSAGE  256
+
+
 uart_inst_t* init_uart(int iTxPin, int iRxPin, int iBaudRate)
 {
     uart_inst_t* pUart = NULL;
@@ -23,6 +27,7 @@ uart_inst_t* init_uart(int iTxPin, int iRxPin, int iBaudRate)
     return pUart;    
 }
 
+
 int get_uart_irq(uart_inst_t* pUart)
 {
     if (pUart == uart0)
@@ -35,7 +40,8 @@ int get_uart_irq(uart_inst_t* pUart)
     }
 }
 
-char    gszMessage[10][256];
+
+char    gszMessage[10][MAX_UART_MESSAGE];
 int     giCurrentMessage = 0;
 int     giValidMessage = -1;
 int     giMessageCharIndex = 0;
@@ -48,8 +54,10 @@ void uart_receive_irq(void)
         uint8_t c = uart_getc(uart0);
         gszMessage[giCurrentMessage][giMessageCharIndex] = c;
 
-        if (c == '\n')
+        if (c == '\n' || c == '\0')
         {
+            gszMessage[giCurrentMessage][giMessageCharIndex] = '\0';
+
             giMessageCharIndex = 0;
             giValidMessage = giCurrentMessage;
             giCurrentMessage++;
@@ -61,13 +69,14 @@ void uart_receive_irq(void)
         else
         {
             giMessageCharIndex++;
-            if (giMessageCharIndex == 256)
+            if (giMessageCharIndex == MAX_UART_MESSAGE)
             {
-                giMessageCharIndex = 255;
+                giMessageCharIndex = MAX_UART_MESSAGE - 1;
             }
         }
     }
 }
+
 
 bool read_uart_message(char* szDest)
 {
@@ -75,6 +84,18 @@ bool read_uart_message(char* szDest)
     {
         strcpy(szDest, gszMessage[giValidMessage]);
         giValidMessage = -1;
+        return true;
+    }
+    return false;
+}
+
+
+bool write_uart_message(uart_inst_t* pUart, const char* szMessage)
+{
+    int iLen = strlen(szMessage);
+    if (iLen < MAX_UART_MESSAGE)
+    {
+        uart_puts(pUart, szMessage);
         return true;
     }
     return false;
