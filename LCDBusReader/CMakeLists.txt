@@ -21,6 +21,7 @@ add_executable(lcd_bus_reader
   src/HexToMem.cpp
   src/W65C816Pins.cpp
   src/W65C816Bus.cpp
+  src/W65C816Slave.cpp
 )
 
 target_include_directories(lcd_bus_reader PRIVATE

@@ -13,6 +13,7 @@
 #include "SDCardTest.h"
 #include "HexToMem.h"
 #include "W65C816Bus.h"
+#include "W65C816Slave.h"
 
 
 void blink_led(int iMicrosecondDelay)
@@ -348,67 +349,11 @@ void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
     sleep_us_high_power(100'000);
 }
 
-bool execute_message(SW65C816Pins* psPins, char* szMessage, int iData, int iAddress)
-{
-    if (memcmp(szMessage, "IO:Z", 4) == 0)
-    {
-        w65_disable_io(psPins);
-    }
-    else if (memcmp(szMessage, "A:", 2) == 0)
-    {
-        iAddress = strtol(&szMessage[2], NULL, 16);
-        if (iAddress >= 0 && iAddress <= 0xFFFF)
-        {
-            write_uart_message(pUart, "OK");
-        }
-        else
-        {
-            write_uart_message(pUart, "B#");
-        }
-    }
-    else if (memcmp(szMessage, "D:", 2) == 0)
-    {
-        iData = strtol(&szMessage[2], NULL, 16);
-        if (iData >= 0 && iData <= 0xFF)
-        {
-            write_uart_message(pUart, "OK");
-        }
-        else
-        {
-            write_uart_message(pUart, "B#");
-        }
-    }
-    else if (memcmp(szMessage, "IO:A", 4) == 0)
-    {
-        w65_address_out_data_in(psPins, iAddress);
-        write_uart_message(pUart, "OK");
-    }
-    else if (memcmp(szMessage, "IO:D+A", 6) == 0)
-    {
-        w65_address_out_data_out(psPins, iData, iAddress);
-        write_uart_message(pUart, "OK");
-    }
-    else if (memcmp(szMessage, "READ", 4) == 0)
-    {
-        iData = w65_read(psPins);
-        if (iData < 0x10)
-        {
-            szMessage[0] = '0';
-            itoa(iData, &szMessage[1], 16);
-        }
-        else
-        {
-            itoa(iData, szMessage, 16);
-        }
-        szMessage[2] = '\n';
-        write_uart_message(pUart, szMessage);
-    }
-}
-
 
 void do_uart_slave(int iTxPin, int iRxPin, int iBaudRate)
 {
     SW65C816Pins    sPins;
+    CW65C816Slave   cSlave;
 
     uart_inst_t* pUart = init_uart_inst(iTxPin, iRxPin, iBaudRate);
 
@@ -417,12 +362,26 @@ void do_uart_slave(int iTxPin, int iRxPin, int iBaudRate)
                                 18, 19, 20, 21, 22, 26, 27, 28,
                                 PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET);
     w65_init(&sPins);
+    cSlave.Init(&sPins);
 
     bool    bLed = true;
     int     iCommandSpeed = 250000;
-    int     iData = 0;
-    int     iAddress = 0;
-    char    szMessage[32];
+    char    szMessage[256];
+    char    szResponse[256];
+    bool    bResult;
+
+
+
+                bResult = cSlave.ExecuteMessage("IO:Z", szResponse);
+                write_uart_message(pUart, szResponse);
+                bResult = cSlave.ExecuteMessage("A:F9C3", szResponse);
+                write_uart_message(pUart, szResponse);
+                bResult = cSlave.ExecuteMessage("D:45", szResponse);
+                write_uart_message(pUart, szResponse);
+                bResult = cSlave.ExecuteMessage("IO:A", szResponse);
+                write_uart_message(pUart, szResponse);
+                bResult = cSlave.ExecuteMessage("READ", szResponse);
+                write_uart_message(pUart, szResponse);
 
     for (;;)
     {
@@ -437,11 +396,11 @@ void do_uart_slave(int iTxPin, int iRxPin, int iBaudRate)
         while (expectedEnd > end)
         {
             end = time_us_64();
-            char szMessage[256];
             bool bNewMessage = read_uart_message(szMessage);
             if (bNewMessage)
             {
-                execute_message(&sPins, szMessage, iData, iAddress);
+                bResult = cSlave.ExecuteMessage(szMessage, szResponse);
+                write_uart_message(pUart, szResponse);
             }
             sleep_us_high_power(10);
         }
