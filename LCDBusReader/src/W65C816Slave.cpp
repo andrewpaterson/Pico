@@ -2,14 +2,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include "W65C816Slave.h"
-#include "W65C816Bus.h"
 
 
 void CW65C816Slave::Init(SW65C816Pins* psPins)
 {
+    CW65C816Bus::Init(psPins);
     miData = 0;
     miAddress = 0;
-    mpsPins = psPins;
 }
 
 
@@ -17,7 +16,7 @@ bool CW65C816Slave::ExecuteMessage(char* szMessage, char* szResponse)
 {
     if (memcmp(szMessage, "IO:Z", 4) == 0)
     {
-        w65_disable_io(mpsPins);
+        DisableIO();
         strcpy(szResponse, "OK");
         return true;
     }
@@ -51,19 +50,19 @@ bool CW65C816Slave::ExecuteMessage(char* szMessage, char* szResponse)
     }
     else if (memcmp(szMessage, "IO:A", 4) == 0)
     {
-        w65_address_out_data_in(mpsPins, miAddress);
+        AddressOutDataIn(miAddress);
         strcpy(szResponse, "OK");
         return true;
     }
     else if (memcmp(szMessage, "IO:D+A", 6) == 0)
     {
-        w65_address_out_data_out(mpsPins, miData, miAddress);
+        AddressOutDataOut(miData, miAddress);
         strcpy(szResponse, "OK");
         return true;
     }
     else if (memcmp(szMessage, "READ", 4) == 0)
     {
-        miData = w65_read(mpsPins);
+        miData = Read();
         if (miData < 0x10)
         {
             szResponse[0] = '0';

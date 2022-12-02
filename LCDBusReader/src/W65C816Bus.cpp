@@ -2,50 +2,47 @@
 #include "W65C816Bus.h"
 
 
-void w65_init(SW65C816Pins* psPins)
+void CW65C816Bus::Init(SW65C816Pins* psPins)
 {
-    uint uiPinMask = make_w65c816_pins_mask(psPins, 0xFFFFFFFF, 0xFF);
-    gpio_init_mask(uiPinMask);
-    gpio_set_dir_in_masked(uiPinMask);
+    mpsPins = psPins;
+    gpio_init_mask(psPins->uiPinMask);
+    gpio_set_dir_in_masked(psPins->uiPinMask);
+    DisableIO();
 }
 
 
-void w65_disable_io(SW65C816Pins* psPins)
+void CW65C816Bus::DisableIO(void)
 {
-    uint uiPinMask = make_w65c816_pins_mask(psPins, 0xFFFFFFFF, 0xFF);
-    gpio_set_dir_in_masked(uiPinMask);
+    gpio_set_dir_in_masked(mpsPins->uiPinMask);
 }
 
 
-void w65_address_out_data_out(SW65C816Pins* psPins, uint uiData, uint uiAddress)
+void CW65C816Bus::AddressOutDataOut(uint uiData, uint uiAddress)
 {
-    uint uiPinMask = make_w65c816_pins_mask(psPins, 0xFFFFFFFF, 0xFF);
-    uint uiValueMask = make_w65c816_pins_mask(psPins, uiAddress, uiData);
-    gpio_put_masked(uiPinMask, uiValueMask);
-    gpio_set_dir_out_masked(uiPinMask);
+    uint uiValueMask = make_w65c816_pins_mask(mpsPins, uiAddress, uiData);
+    gpio_put_masked(mpsPins->uiPinMask, uiValueMask);
+    gpio_set_dir_out_masked(mpsPins->uiPinMask);
 }
 
 
-void w65_address_out_data_in(SW65C816Pins* psPins, uint uiAddress)
+void CW65C816Bus::AddressOutDataIn(uint uiAddress)
 {
-    uint uiPinMask = make_w65c816_pins_mask(psPins, 0xFFFFFFFF, 0x00);
-    uint uiValueMask = make_w65c816_pins_mask(psPins, uiAddress, 0x00);
-    gpio_put_masked(uiPinMask, uiValueMask);
-    gpio_set_dir_out_masked(uiPinMask);
+    gpio_set_dir_in_masked(mpsPins->uiDataMask);
 
-    uiPinMask = make_w65c816_pins_mask(psPins, 0x00, 0xFF);
-    gpio_set_dir_in_masked(uiPinMask);
+    uint uiValueMask = make_w65c816_pins_mask(mpsPins, uiAddress, 0x00);
+    gpio_put_masked(mpsPins->uiAddressMask, uiValueMask);
+    gpio_set_dir_out_masked(mpsPins->uiAddressMask);
 }
 
 
-int w65_read(SW65C816Pins* psPins)
+int CW65C816Bus::Read(void)
 {
     uint    uiData;
     int     iData;
 
     uiData = gpio_get_all();
 
-    iData = make_w65c816_pins_mask (psPins, 0x00, uiData);
+    iData = mask_w65c816_to_data(mpsPins, uiData);
     return iData;
 }
 

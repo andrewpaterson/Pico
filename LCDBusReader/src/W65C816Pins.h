@@ -7,6 +7,9 @@ struct SW65C816Pins
 {
     uint auiAddressGPIO[19];
     uint auiDataGPIO[8];
+    uint uiPinMask;
+    uint uiDataMask;
+    uint uiAddressMask;
 
     void Init(  uint uiData0GPIO,
                 uint uiData1GPIO,
@@ -38,8 +41,10 @@ struct SW65C816Pins
 };
 
 
+uint make_w65c816_address_mask(SW65C816Pins* psPins, uint uiAddress);
+uint make_w65c816_data_mask(SW65C816Pins* psPins, uint uiData);
 uint make_w65c816_pins_mask(SW65C816Pins* psPins, uint uiAddress, uint uiData);
-
+uint mask_w65c816_to_data(SW65C816Pins* psPins, uint uiData);
 
 
 #endif // __W65C816_PINS_H__

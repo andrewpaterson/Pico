@@ -57,6 +57,10 @@ void SW65C816Pins::Init(uint uiData0GPIO,
     auiDataGPIO[5] = uiData5GPIO;
     auiDataGPIO[6] = uiData6GPIO;
     auiDataGPIO[7] = uiData7GPIO;
+
+    uiAddressMask = make_w65c816_address_mask(this, 0xFFFFFF);
+    uiDataMask = make_w65c816_data_mask(this, 0xFF);
+    uiPinMask = uiAddressMask | uiDataMask;
 }
 
 
@@ -94,7 +98,24 @@ uint mask_data_pin_value(SW65C816Pins* psPins, uint uiDataBitIndex, uint uiValue
 }
 
 
-uint make_w65c816_pins_mask(SW65C816Pins* psPins, uint uiAddress, uint uiData)
+uint mask_to_data_value(SW65C816Pins* psPins, uint uiDataBitIndex, uint uiValue)
+{
+    uint uiPin = psPins->auiDataGPIO[uiDataBitIndex];
+    if (uiPin != PIN_NOT_SET)
+    {
+        uint uiPinBit = 1 << uiPin;
+        uint uiDataBit = 1 << uiDataBitIndex;
+        bool bValue = (uiValue & uiPinBit) == uiPinBit;
+        if (bValue)
+        {
+            return uiDataBit;
+        }
+    }
+    return 0;
+}
+
+
+uint make_w65c816_address_mask(SW65C816Pins* psPins, uint uiAddress)
 {
     uint a0 = mask_address_pin_value(psPins, 0, uiAddress);
     uint a1 = mask_address_pin_value(psPins, 1, uiAddress);
@@ -120,6 +141,12 @@ uint make_w65c816_pins_mask(SW65C816Pins* psPins, uint uiAddress, uint uiData)
                           a8 |  a9 | a10 | a11 | a12 | a13 | a14 | a15 |
                          a16 | a17 | a18;
 
+    return uiAddressMask;
+}
+
+
+uint make_w65c816_data_mask(SW65C816Pins* psPins, uint uiData)
+{
     uint d0 = mask_data_pin_value(psPins, 0, uiData);
     uint d1 = mask_data_pin_value(psPins, 1, uiData);
     uint d2 = mask_data_pin_value(psPins, 2, uiData);
@@ -130,7 +157,31 @@ uint make_w65c816_pins_mask(SW65C816Pins* psPins, uint uiAddress, uint uiData)
     uint d7 = mask_data_pin_value(psPins, 7, uiData);
 
     uint uiDataMask =  d0 | d1 | d2 | d3 | d4 | d5 | d6 | d7;
+    return uiDataMask;
+}
 
-    return uiAddressMask;
+
+uint make_w65c816_pins_mask(SW65C816Pins* psPins, uint uiAddress, uint uiData)
+{
+    uint uiAddressMask = make_w65c816_address_mask(psPins, uiAddress);
+    uint uiDataMask = make_w65c816_data_mask(psPins, uiData);
+
+    return uiAddressMask | uiDataMask;
+}
+
+
+uint mask_w65c816_to_data(SW65C816Pins* psPins, uint uiData)
+{
+    uint d0 = mask_to_data_value(psPins, 0, uiData);
+    uint d1 = mask_to_data_value(psPins, 1, uiData);
+    uint d2 = mask_to_data_value(psPins, 2, uiData);
+    uint d3 = mask_to_data_value(psPins, 3, uiData);
+    uint d4 = mask_to_data_value(psPins, 4, uiData);
+    uint d5 = mask_to_data_value(psPins, 5, uiData);
+    uint d6 = mask_to_data_value(psPins, 6, uiData);
+    uint d7 = mask_to_data_value(psPins, 7, uiData);
+
+    uint uiDataMask =  d0 | d1 | d2 | d3 | d4 | d5 | d6 | d7;
+    return uiDataMask;
 }
 

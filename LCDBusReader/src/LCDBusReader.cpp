@@ -14,6 +14,7 @@
 #include "HexToMem.h"
 #include "W65C816Bus.h"
 #include "W65C816Slave.h"
+#include "W65C816Master.h"
 
 
 void blink_led(int iMicrosecondDelay)
@@ -250,6 +251,7 @@ void block_reads(SSDCardPins* pPins, uint16_t uiAddress)
     blink_led(200'000);
 }
 
+
 void do_sd_card()
 {
 
@@ -337,73 +339,58 @@ uart_inst_t* init_uart_inst(int iTxPin, int iRxPin, int iBaudRate)
 }
 
 
-void write_address(char* szDest, int iAddress)
-{
-    itoa(iAddress, szDest, 16);
-    int iLen = strlen(szDest);
-    int iPad = 4 - iLen;
-    memmove(&szDest[2 + iPad], szDest, iLen);
-    for (int i = 0; i < iPad; i++)
-    {
-        szDest[2 + i] = '0';
-    }
-    szDest[0] = 'A';
-    szDest[1] = ':';
-    szDest[6] = '\n';
-    szDest[7] = '\0';
-}
-
-
 void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
 {
     uart_inst_t* pUart = init_uart_inst(iTxPin, iRxPin, iBaudRate);
+
+    SW65C816Pins    sPins;
+    CW65C816Master  cMaster;
+
+    sPins.Init( /* Data Pins */ PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET,
+                /* Addr Pins */ PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET,
+                                PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET,
+                                13, 14, 15);
+
+    cMaster.Init(&sPins, pUart, 8, 9, 10, 11, 12, 4, 5, 16, 3);
 
     char szResponse[256];
     char szMessage[256];
     bool bLed = false;
 
-    write_uart_message(pUart, "IO:Z\n");
-    sleep_us_high_power(1);
-    read_uart_message(szResponse);
-
-    int iAddress = 0x8123;
-    for (;;)
+    int iAddress;
+    int iData = 0xEA;
+    for (iAddress = 0xEAEA; iAddress <= 0xFFFF; iAddress++)
     {
         gpio_put(25, bLed);
-        sleep_us_high_power(100'000);
+        //sleep_us_high_power(100'000);
 
-        write_address(szMessage, iAddress);
-        write_uart_message(pUart, szMessage);
-        sleep_us_high_power(1);
-        read_uart_message(szResponse);
-
-        write_uart_message(pUart, "IO:A\n");
-        sleep_us_high_power(1);
-        read_uart_message(szResponse);
-
-        write_uart_message(pUart, "READ\n");
-        sleep_us_high_power(1);
-        read_uart_message(szResponse);
+        cMaster.Write(iAddress, iData);
 
         bLed = !bLed;
         iAddress++;
+        if (iData < 0)
+        {
+            iData = 0xFF;
+        }
     }
+
+    cMaster.Reset(false);
+    cMaster.BusEnable(true);
+    cMaster.FreeClock(true);
 }
 
 
 void do_uart_slave(int iTxPin, int iRxPin, int iBaudRate)
 {
+    uart_inst_t* pUart = init_uart_inst(iTxPin, iRxPin, iBaudRate);
+
     SW65C816Pins    sPins;
     CW65C816Slave   cSlave;
-
-    uart_inst_t* pUart = init_uart_inst(iTxPin, iRxPin, iBaudRate);
 
     sPins.Init( /* Data Pins */ 2, 3, 4, 5, 6, 7, 8, 9,
                 /* Addr Pins */ 17, 16, 15, 14, 13, 12, 11, 10,
                                 18, 19, 20, 21, 22, 26, 27, 28,
                                 PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET);
-    w65_init(&sPins);
-    w65_disable_io(&sPins);
     cSlave.Init(&sPins);
 
     bool    bLed = true;
@@ -438,14 +425,6 @@ void do_uart_slave(int iTxPin, int iRxPin, int iBaudRate)
 }
 
 
-void init_signal(int iPin, bool bValue)
-{
-    gpio_init(iPin);
-    gpio_set_dir(iPin, GPIO_OUT);
-    gpio_put(iPin, bValue);
-}
-
-
 void init_io_and_led(void)
 {
     stdio_init_all();
@@ -460,22 +439,9 @@ int main()
 
 //    do_uart_slave(0, 1, 115200);
 
-    int iResB = 8;
-    int iNmiB = 9;
-    int iIrqB = 10;
-    int iAbortB = 11;
-    int iBE = 12;
-
-    init_signal(iBE, false);
-    init_signal(iResB, false);
-    init_signal(iNmiB, true);
-    init_signal(iIrqB, true);
-    init_signal(iAbortB, true);
-
     do_ltc6903(18, 19, 16, 17, 1'500);
 
     do_uart_master(0, 1, 115200);
-
-    do_shift_LCD(22, 21, 20);
+    blink_led(1'000'000);
 }
 
