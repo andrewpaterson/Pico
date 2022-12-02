@@ -29,6 +29,7 @@ public:
     void    Reset(bool bReset);
     void    BusEnable(bool bEnable);
     void    FreeClock(bool bFreeRunningClock);
+    void    Tick(bool bPhi2);
 
 protected:
     void    InitSignal(int iPin, bool bValue);

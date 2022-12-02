@@ -55,13 +55,14 @@ bool CW65C816Master::SendMessage(char* szMessage)
             return false;
         }
 
-        for (int i = 0; i < 100; i++)
+        for (int i = 0; i < 10; i++)
         {
             bResult = read_uart_message(szResponse);
             if (bResult)
             {
                 break;
             }
+            sleep_us_high_power(1);
         }
 
         if (bResult)
@@ -90,13 +91,14 @@ int CW65C816Master::SendMessageReceiveByte(char* szMessage)
             return -1;
         }
 
-        for (int i = 0; i < 100; i++)
+        for (int i = 0; i < 10; i++)
         {
             bResult = read_uart_message(szResponse);
             if (bResult)
             {
                 break;
             }
+            sleep_us_high_power(1);
         }
 
         if (bResult)
@@ -150,22 +152,30 @@ void CW65C816Master::DataToString(char* szDest, uint uiData)
 bool CW65C816Master::Write(uint uiAddress, uint uiData)
 {
     char    sz[32];
+    bool    bResult;
 
     gpio_put(miPinBE, false);
     gpio_put(miPinOEB, true);
     gpio_put(miPinWEB, true);
 
     AddressToString(sz, uiAddress & 0xFFFF);
-    SendMessage(sz);
-    DataToString(sz, uiData & 0xFF);
-    SendMessage(sz);
-    AddressOutDataOut(uiData, uiAddress);
-    SendMessage("IO:D+A\n");
-
-    gpio_put(miPinWEB, false);
-    gpio_put(miPinWEB, false);
-    gpio_put(miPinWEB, false);
-    gpio_put(miPinWEB, true);
+    bResult = SendMessage(sz);
+    if (bResult)
+    {
+        DataToString(sz, uiData & 0xFF);
+        bResult = SendMessage(sz);
+        if (bResult)
+        {
+            AddressOutDataOut(uiData, uiAddress);
+            bResult = SendMessage("IO:D+A\n");
+            if (bResult)
+            {
+                gpio_put(miPinWEB, false);
+                sleep_us_high_power(10);
+                gpio_put(miPinWEB, true);
+            }
+        }
+    }
 }
 
 
@@ -184,7 +194,7 @@ int CW65C816Master::Read(uint uiAddress)
     SendMessage("IO:A\n");
 
     gpio_put(miPinOEB, false);
-    iData = SendMessageReceiveByte("READ");
+    iData = SendMessageReceiveByte("READ\n");
     gpio_put(miPinOEB, true);
     return iData;
 }
@@ -212,5 +222,11 @@ void CW65C816Master::BusEnable(bool bEnable)
 void CW65C816Master::FreeClock(bool bFreeRunningClock)
 {
     gpio_put(miPinClkSel, !bFreeRunningClock);
+}
+
+
+void CW65C816Master::Tick(bool bPhi2)
+{
+    gpio_put(miPinClk, bPhi2);
 }
 

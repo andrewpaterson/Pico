@@ -17,7 +17,7 @@ bool CW65C816Slave::ExecuteMessage(char* szMessage, char* szResponse)
     if (memcmp(szMessage, "IO:Z", 4) == 0)
     {
         DisableIO();
-        strcpy(szResponse, "OK");
+        strcpy(szResponse, "OK\n");
         return true;
     }
     else if (memcmp(szMessage, "A:", 2) == 0)
@@ -25,12 +25,12 @@ bool CW65C816Slave::ExecuteMessage(char* szMessage, char* szResponse)
         miAddress = strtol(&szMessage[2], NULL, 16);
         if (miAddress >= 0 && miAddress <= 0xFFFF)
         {
-            strcpy(szResponse, "OK");
+            strcpy(szResponse, "OK\n");
             return true;
         }
         else
         {
-            strcpy(szResponse, "A#");
+            strcpy(szResponse, "A#\n");
             return false;
         }
     }
@@ -39,25 +39,25 @@ bool CW65C816Slave::ExecuteMessage(char* szMessage, char* szResponse)
         miData = strtol(&szMessage[2], NULL, 16);
         if (miData >= 0 && miData <= 0xFF)
         {
-            strcpy(szResponse, "OK");
+            strcpy(szResponse, "OK\n");
             return true;
         }
         else
         {
-            strcpy(szResponse, "D#");
+            strcpy(szResponse, "D#\n");
             return false;
         }
     }
     else if (memcmp(szMessage, "IO:A", 4) == 0)
     {
         AddressOutDataIn(miAddress);
-        strcpy(szResponse, "OK");
+        strcpy(szResponse, "OK\n");
         return true;
     }
     else if (memcmp(szMessage, "IO:D+A", 6) == 0)
     {
         AddressOutDataOut(miData, miAddress);
-        strcpy(szResponse, "OK");
+        strcpy(szResponse, "OK\n");
         return true;
     }
     else if (memcmp(szMessage, "READ", 4) == 0)

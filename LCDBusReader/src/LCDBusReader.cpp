@@ -341,6 +341,15 @@ uart_inst_t* init_uart_inst(int iTxPin, int iRxPin, int iBaudRate)
 
 void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
 {
+    S595OutPins sLCDPins;
+    char szLine1[17];
+
+    sLCDPins.Init(PIN_NOT_SET, 22, 21, 20, PIN_NOT_SET);
+    init_shift(&sLCDPins);
+
+    init_lcd(&sLCDPins);
+    put_clear(&sLCDPins);
+
     uart_inst_t* pUart = init_uart_inst(iTxPin, iRxPin, iBaudRate);
 
     SW65C816Pins    sPins;
@@ -357,26 +366,52 @@ void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
     char szMessage[256];
     bool bLed = false;
 
-    int iAddress;
-    int iData = 0xEA;
-    for (iAddress = 0xEAEA; iAddress <= 0xFFFF; iAddress++)
+    int iAddress = 0xFFFC;
+    int iData;
+    for (;;)
     {
         gpio_put(25, bLed);
-        //sleep_us_high_power(100'000);
 
-        cMaster.Write(iAddress, iData);
+        if (!bLed)
+        {
+            iData = 0xEA;
+            cMaster.Write(iAddress, iData);
+        }
+        else
+        {
+            iData =  cMaster.Read(iAddress);
+            itoa(iData, szLine1, 16);
+            put_lines(&sLCDPins, szLine1, "X");
+        }
 
         bLed = !bLed;
-        iAddress++;
+        
         if (iData < 0)
         {
             iData = 0xFF;
         }
     }
 
-    cMaster.Reset(false);
+    cMaster.HighZ();
+
+    cMaster.FreeClock(false);
+
     cMaster.BusEnable(true);
-    cMaster.FreeClock(true);
+    
+    bLed = false;
+    for (int i = 0; ; i++)
+    {
+        if (i == 4)
+        {
+            cMaster.Reset(false);
+        }
+        gpio_put(25, bLed);
+
+        cMaster.Tick(bLed);
+        bLed = !bLed;
+        
+        sleep_us_high_power(1'000'000);
+    }
 }
 
 
@@ -436,12 +471,14 @@ void init_io_and_led(void)
 int main() 
 {
     init_io_and_led();
+    gpio_put(25, true);
 
-//    do_uart_slave(0, 1, 115200);
+    //do_uart_slave(0, 1, 115200);
+    sleep_us_high_power(250'000);
 
     do_ltc6903(18, 19, 16, 17, 1'500);
 
     do_uart_master(0, 1, 115200);
-    blink_led(1'000'000);
+    gpio_put(25, false);
 }
 
