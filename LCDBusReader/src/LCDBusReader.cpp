@@ -337,16 +337,57 @@ uart_inst_t* init_uart_inst(int iTxPin, int iRxPin, int iBaudRate)
 }
 
 
+void write_address(char* szDest, int iAddress)
+{
+    itoa(iAddress, szDest, 16);
+    int iLen = strlen(szDest);
+    int iPad = 4 - iLen;
+    memmove(&szDest[2 + iPad], szDest, iLen);
+    for (int i = 0; i < iPad; i++)
+    {
+        szDest[2 + i] = '0';
+    }
+    szDest[0] = 'A';
+    szDest[1] = ':';
+    szDest[6] = '\n';
+    szDest[7] = '\0';
+}
+
+
 void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
 {
     uart_inst_t* pUart = init_uart_inst(iTxPin, iRxPin, iBaudRate);
 
-    uart_puts(pUart, "Garbage\n");
-    sleep_us_high_power(100'000);
-    uart_puts(pUart, "Fast\n");
-    sleep_us_high_power(1000'000);
-    uart_puts(pUart, "Slow\n");
-    sleep_us_high_power(100'000);
+    char szResponse[256];
+    char szMessage[256];
+    bool bLed = false;
+
+    write_uart_message(pUart, "IO:Z\n");
+    sleep_us_high_power(1);
+    read_uart_message(szResponse);
+
+    int iAddress = 0x8123;
+    for (;;)
+    {
+        gpio_put(25, bLed);
+        sleep_us_high_power(100'000);
+
+        write_address(szMessage, iAddress);
+        write_uart_message(pUart, szMessage);
+        sleep_us_high_power(1);
+        read_uart_message(szResponse);
+
+        write_uart_message(pUart, "IO:A\n");
+        sleep_us_high_power(1);
+        read_uart_message(szResponse);
+
+        write_uart_message(pUart, "READ\n");
+        sleep_us_high_power(1);
+        read_uart_message(szResponse);
+
+        bLed = !bLed;
+        iAddress++;
+    }
 }
 
 
@@ -362,6 +403,7 @@ void do_uart_slave(int iTxPin, int iRxPin, int iBaudRate)
                                 18, 19, 20, 21, 22, 26, 27, 28,
                                 PIN_NOT_SET, PIN_NOT_SET, PIN_NOT_SET);
     w65_init(&sPins);
+    w65_disable_io(&sPins);
     cSlave.Init(&sPins);
 
     bool    bLed = true;
@@ -369,19 +411,6 @@ void do_uart_slave(int iTxPin, int iRxPin, int iBaudRate)
     char    szMessage[256];
     char    szResponse[256];
     bool    bResult;
-
-
-
-                bResult = cSlave.ExecuteMessage("IO:Z", szResponse);
-                write_uart_message(pUart, szResponse);
-                bResult = cSlave.ExecuteMessage("A:F9C3", szResponse);
-                write_uart_message(pUart, szResponse);
-                bResult = cSlave.ExecuteMessage("D:45", szResponse);
-                write_uart_message(pUart, szResponse);
-                bResult = cSlave.ExecuteMessage("IO:A", szResponse);
-                write_uart_message(pUart, szResponse);
-                bResult = cSlave.ExecuteMessage("READ", szResponse);
-                write_uart_message(pUart, szResponse);
 
     for (;;)
     {
@@ -429,7 +458,7 @@ int main()
 {
     init_io_and_led();
 
-    do_uart_slave(0, 1, 115200);
+//    do_uart_slave(0, 1, 115200);
 
     int iResB = 8;
     int iNmiB = 9;
