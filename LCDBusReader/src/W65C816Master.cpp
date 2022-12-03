@@ -42,39 +42,47 @@ void CW65C816Master::InitSignal(int iPin, bool bValue)
 }
 
 
-bool CW65C816Master::SendMessage(char* szMessage)
+bool CW65C816Master::SendMessage(char* szMessage, bool bIgnoreResponse)
 {
     bool    bResult;
     char    szResponse[256];
 
-    for (int iRetry = 0; iRetry < 10; iRetry++)
+    if (bIgnoreResponse)
     {
-        bResult = write_uart_message(mpUart, szMessage);
-        if (!bResult)
+        write_uart_message(mpUart, szMessage);
+        return true;
+    }
+    else
+    {
+        for (int iRetry = 0; iRetry < 10; iRetry++)
         {
-            return false;
-        }
+            bResult = write_uart_message(mpUart, szMessage);
+            if (!bResult)
+            {
+                return false;
+            }
 
-        for (int i = 0; i < 10; i++)
-        {
-            bResult = read_uart_message(szResponse);
+            for (int i = 0; i < 10; i++)
+            {
+                bResult = read_uart_message(szResponse);
+                if (bResult)
+                {
+                    break;
+                }
+                sleep_us_high_power(1);
+            }
+
             if (bResult)
             {
-                break;
+                if (strcmp(szResponse, "OK") == 0)
+                {
+                    return true;
+                }
             }
-            sleep_us_high_power(1);
         }
 
-        if (bResult)
-        {
-            if (strcmp(szResponse, "OK") == 0)
-            {
-                return true;
-            }
-        }
+        return false;
     }
-
-    return false;
 }
 
 
@@ -149,7 +157,31 @@ void CW65C816Master::DataToString(char* szDest, uint uiData)
 }
 
 
-bool CW65C816Master::Write(uint uiAddress, uint uiData)
+bool CW65C816Master::SendAddress(uint uiAddress, bool bIgnoreResponse)
+{
+    char    sz[32];
+
+    AddressToString(sz, uiAddress & 0xFFFF);
+    return SendMessage(sz, bIgnoreResponse);
+}
+
+
+bool CW65C816Master::SendData(uint uiData, bool bIgnoreResponse)
+{
+    char    sz[32];
+
+    DataToString(sz, uiData & 0xFF);
+    return SendMessage(sz, bIgnoreResponse);
+}
+
+
+bool CW65C816Master::SendAddressOutDataOut(bool bIgnoreResponse)
+{
+    return SendMessage("IO:D+A\n", bIgnoreResponse);
+}
+
+
+bool CW65C816Master::Write(uint uiAddress, uint uiData, bool bIgnoreResponse)
 {
     char    sz[32];
     bool    bResult;
@@ -158,22 +190,22 @@ bool CW65C816Master::Write(uint uiAddress, uint uiData)
     gpio_put(miPinOEB, true);
     gpio_put(miPinWEB, true);
 
-    AddressToString(sz, uiAddress & 0xFFFF);
-    bResult = SendMessage(sz);
+    bResult = SendAddress(uiAddress, bIgnoreResponse);
     if (bResult)
     {
-        DataToString(sz, uiData & 0xFF);
-        bResult = SendMessage(sz);
+        bResult = SendData(uiData, bIgnoreResponse);
         if (bResult)
         {
             AddressOutDataOut(uiData, uiAddress);
-            bResult = SendMessage("IO:D+A\n");
+            bResult = SendMessage("IO:D+A\n", bIgnoreResponse);
             if (bResult)
             {
                 gpio_put(miPinWEB, false);
                 sleep_us_high_power(10);
                 gpio_put(miPinWEB, true);
             }
+
+            HighZ();
         }
     }
 }
@@ -183,6 +215,7 @@ int CW65C816Master::Read(uint uiAddress)
 {
     char    sz[32];
     int     iData;
+    bool    bResult;
 
     gpio_put(miPinBE, false);
     gpio_put(miPinOEB, true);
@@ -200,10 +233,10 @@ int CW65C816Master::Read(uint uiAddress)
 }
 
 
-bool CW65C816Master::HighZ(void)
+bool CW65C816Master::HighZ(bool bIgnoreResponse)
 {
     DisableIO();
-    return SendMessage("IO:Z\n");
+    return SendMessage("IO:Z\n", bIgnoreResponse);
 }
 
 
@@ -228,5 +261,17 @@ void CW65C816Master::FreeClock(bool bFreeRunningClock)
 void CW65C816Master::Tick(bool bPhi2)
 {
     gpio_put(miPinClk, bPhi2);
+}
+
+
+void CW65C816Master::SramOutputEnable(bool bEnable)
+{
+    gpio_put(miPinOEB, !bEnable);
+}
+
+
+void CW65C816Master::SramWriteEnable(bool bEnable)
+{
+    gpio_put(miPinWEB, !bEnable);
 }
 

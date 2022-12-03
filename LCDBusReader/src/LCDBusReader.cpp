@@ -325,6 +325,26 @@ void do_sd_card()
 }
 
 
+void print_read_byte(S595OutPins* psLCDPins, int iData)
+{
+    char szLine1[17];
+
+    if (iData >=0 && iData <= 0xF)
+    {
+        itoa(iData, &szLine1[1], 16);
+        szLine1[0] = '0';
+    }
+    else if (iData > 0xF && iData <= 0xFF)
+    {
+        itoa(iData, szLine1, 16);
+    }
+    else
+    {
+        strcpy(szLine1, "Error");
+    }    
+    put_lines(psLCDPins, szLine1, (char*)"");
+}
+
 
 uart_inst_t* init_uart_inst(int iTxPin, int iRxPin, int iBaudRate)
 {
@@ -342,7 +362,6 @@ uart_inst_t* init_uart_inst(int iTxPin, int iRxPin, int iBaudRate)
 void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
 {
     S595OutPins sLCDPins;
-    char szLine1[17];
 
     sLCDPins.Init(PIN_NOT_SET, 22, 21, 20, PIN_NOT_SET);
     init_shift(&sLCDPins);
@@ -361,44 +380,41 @@ void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
                                 13, 14, 15);
 
     cMaster.Init(&sPins, pUart, 8, 9, 10, 11, 12, 4, 5, 16, 3);
+    
+    cMaster.SendData(0x23, true);
+    cMaster.SramWriteEnable(true);
+    cMaster.SendAddress(0xFFFC, true);
+    cMaster.SendAddressOutDataOut(true);
+    sleep_us_high_power(500'000);
 
-    char szResponse[256];
-    char szMessage[256];
-    bool bLed = false;
+    cMaster.SendData(0x81, true);
+    cMaster.SendAddress(0xFFFD, true);
+    cMaster.SendAddressOutDataOut(true);
+    sleep_us_high_power(500'000);
 
-    int iAddress = 0xFFFC;
-    int iData;
-    for (;;)
-    {
-        gpio_put(25, bLed);
+    cMaster.SendData(0x4C, true);
+    cMaster.SendAddress(0x8123, true);
+    cMaster.SendAddressOutDataOut(true);
+    sleep_us_high_power(500'000);
 
-        if (!bLed)
-        {
-            iData = 0xEA;
-            cMaster.Write(iAddress, iData);
-        }
-        else
-        {
-            iData =  cMaster.Read(iAddress);
-            itoa(iData, szLine1, 16);
-            put_lines(&sLCDPins, szLine1, "X");
-        }
+    cMaster.SendData(0x23, true);
+    cMaster.SendAddress(0x8124, true);
+    cMaster.SendAddressOutDataOut(true);
+    sleep_us_high_power(500'000);
 
-        bLed = !bLed;
-        
-        if (iData < 0)
-        {
-            iData = 0xFF;
-        }
-    }
+    cMaster.SendData(0x81, true);
+    cMaster.SendAddress(0x8125, true);
+    cMaster.SendAddressOutDataOut(true);
+    sleep_us_high_power(500'000);
+
+    cMaster.SramWriteEnable(false);
 
     cMaster.HighZ();
 
     cMaster.FreeClock(false);
-
     cMaster.BusEnable(true);
     
-    bLed = false;
+    bool bLed = false;
     for (int i = 0; ; i++)
     {
         if (i == 4)
@@ -410,7 +426,7 @@ void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
         cMaster.Tick(bLed);
         bLed = !bLed;
         
-        sleep_us_high_power(1'000'000);
+        sleep_us_high_power(500'000);
     }
 }
 
