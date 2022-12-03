@@ -7,11 +7,6 @@
 const uint eCycleTime = 1;
 
 
-void put_lines(S595OutPins* psPins, char* szLine1, char* szLine2);
-void put_clear(S595OutPins* psPins);
-void init_lcd(S595OutPins* psPins);
-
-
 uint16_t make_command_value(bool rs, bool rw, bool e, uint data)
 {
     uint16_t uiCommand = 0;
@@ -83,9 +78,9 @@ void put_clear(S595OutPins* psPins)
 }
 
 
-void put_string(S595OutPins* psPins, char* sz, int maxLength)
+void put_string(S595OutPins* psPins, const char* sz, int maxLength)
 {
-    char*   pc = sz;
+    char*   pc = (char*)sz;
     int     length = 0;
     
     while (*pc && length < maxLength)
@@ -105,7 +100,7 @@ void put_display_address(S595OutPins* psPins, uint address)
 }
 
 
-void put_lines(S595OutPins* psPins, char* szLine1, char* szLine2)
+void put_lines(S595OutPins* psPins, const char* szLine1, const char* szLine2)
 {
     char*   pc;
 

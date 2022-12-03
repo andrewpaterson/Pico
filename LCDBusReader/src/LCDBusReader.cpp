@@ -10,6 +10,7 @@
 #include "SPIComm.h"
 #include "LTC6903.h"
 #include "SDCard.h"
+#include "Keypad.h"
 #include "SDCardTest.h"
 #include "HexToMem.h"
 #include "W65C816Bus.h"
@@ -30,109 +31,59 @@ void blink_led(int iMicrosecondDelay)
     }
 }
 
-void kitt(int iCount, char* szDest)
-{
-    int iMod = iCount % 26;
-    int i;
 
-    if (iMod <= 13)
-    {
-        for (i = 0; i < 16; i++)
-        {
-            if ((i >= iMod) && (i <= iMod + 2))
-            {
-                szDest[i] = '-';
-            }
-            else
-            {
-                szDest[i] = ' ';
-            }
-        }
-    }
-    else
-    {
-        iMod = 26 - iMod;
-        for (i = 0; i < 16; i++)
-        {
-            if ((i >= iMod) && (i <= iMod + 2))
-            {
-                szDest[i] = '-';
-            }
-            else
-            {
-                szDest[i] = ' ';
-            }
-        }
-    }
-    szDest[16] = 0;
-}
+// void do_shift_LCD(uint uiShiftPin, uint uiStorageLatchPin, uint uiDataOutPin)
+// {
+//     S595OutPins sPins;
+//     sPins.Init(PIN_NOT_SET, uiShiftPin, uiStorageLatchPin, uiDataOutPin, PIN_NOT_SET);
+//     init_shift(&sPins);
+
+//     init_lcd(&sPins);
+//     put_clear(&sPins);
+
+//     int  i = 0;
+//     char szLine1[17];
+//     char szLine2[17];
+//     while(true)
+//     {
+//         kitt(i, szLine1);
+//         message(i, szLine2);
+
+//         put_lines(&sPins, szLine1, szLine2);
+
+//         sleep_us_high_power(200000);
+
+//         i++;
+//     }
+// }
 
 
-void message(int iCount, char* szDest)
-{
-    if (((iCount / 20) % 2) == 0)
-    {
-        strcpy(szDest, "  Parallel pins ");
-    }
-    else
-    {
-        strcpy(szDest, "   driven LCD   ");
-    }
-}
+// void do_parallel_LCD(void)
+// {
+//     bool led = true;
 
+//     S11BitLCDPins   sPins;
 
-void do_shift_LCD(uint uiShiftPin, uint uiStorageLatchPin, uint uiDataOutPin)
-{
-    S595OutPins sPins;
-    sPins.Init(PIN_NOT_SET, uiShiftPin, uiStorageLatchPin, uiDataOutPin, PIN_NOT_SET);
-    init_shift(&sPins);
+//     sPins.Init(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 
-    init_lcd(&sPins);
-    put_clear(&sPins);
+//     init_lcd(&sPins);
+//     put_clear(&sPins);
 
-    int  i = 0;
-    char szLine1[17];
-    char szLine2[17];
-    while(true)
-    {
-        kitt(i, szLine1);
-        message(i, szLine2);
+//     int  i = 0;
+//     char szLine1[17];
+//     char szLine2[17];
+//     while(true)
+//     {
+//         kitt(i, szLine1);
+//         message(i, szLine2);
 
-        put_lines(&sPins, szLine1, szLine2);
+//         put_lines(&sPins, szLine1, szLine2);
 
-        sleep_us_high_power(200000);
+//         sleep_us_high_power(200000);
 
-        i++;
-    }
-}
-
-
-void do_parallel_LCD(void)
-{
-    bool led = true;
-
-    S11BitLCDPins   sPins;
-
-    sPins.Init(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-
-    init_lcd(&sPins);
-    put_clear(&sPins);
-
-    int  i = 0;
-    char szLine1[17];
-    char szLine2[17];
-    while(true)
-    {
-        kitt(i, szLine1);
-        message(i, szLine2);
-
-        put_lines(&sPins, szLine1, szLine2);
-
-        sleep_us_high_power(200000);
-
-        i++;
-    }
-}
+//         i++;
+//     }
+// }
 
 
 void do_ltc6903(int pinClk, int pinTx, int pinRx, int pinEnable, int iHertz)
@@ -143,61 +94,6 @@ void do_ltc6903(int pinClk, int pinTx, int pinRx, int pinEnable, int iHertz)
     
     init_spi(&sPins);
     put_LTC6903_frequency(&sPins, iHertz);
-}
-
-
-int get_snes_button(uint16_t uiButtons)
-{
-    if (uiButtons & 0x8000)
-    {
-        return 1;
-    }
-    if (uiButtons & 0x4000)
-    {
-        return 2;
-    }
-    if (uiButtons & 0x2000)
-    {
-        return 3;
-    }
-    if (uiButtons & 0x1000)
-    {
-        return 4;
-    }
-    if (uiButtons & 0x800)
-    {
-        return 5;
-    }
-    if (uiButtons & 0x400)
-    {
-        return 6;
-    }
-    if (uiButtons & 0x200)
-    {
-        return 7;
-    }
-    if (uiButtons & 0x100)
-    {
-        return 8;
-    }
-    if (uiButtons & 0x80)
-    {
-        return 9;
-    }
-    if (uiButtons & 0x40)
-    {
-        return 10;
-    }
-    if (uiButtons & 0x20)
-    {
-        return 11;
-    }
-    if (uiButtons & 0x10)
-    {
-        return 12;
-    }
-
-    return 0;
 }
 
 
@@ -359,8 +255,26 @@ uart_inst_t* init_uart_inst(int iTxPin, int iRxPin, int iBaudRate)
 }
 
 
+int change_frequency(SSPIPins* psPins, CW65C816Master* pcMaster, int iFrequency)
+{
+    pcMaster->BusEnable(false);
+    put_LTC6903_frequency(psPins, iFrequency);
+    pcMaster->FreeClock(true);
+    pcMaster->BusEnable(true);
+    return iFrequency;
+}
+
+
 void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
 {
+    SSPIPins    sLTCPins;
+    int         iFrequency = 1500;
+
+    sLTCPins.Init(18, 19, 16, 17, false);
+    
+    init_spi(&sLTCPins);
+    put_LTC6903_frequency(&sLTCPins, iFrequency);
+
     S595OutPins sLCDPins;
 
     sLCDPins.Init(PIN_NOT_SET, 22, 21, 20, PIN_NOT_SET);
@@ -369,6 +283,12 @@ void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
     init_lcd(&sLCDPins);
     put_clear(&sLCDPins);
 
+    S165InPins  sKeyPins;
+    CKeypad     cKeypad;
+
+    sKeyPins.Init(26, 27, 28, true, true, true);
+    cKeypad.Init(&sKeyPins);
+    
     uart_inst_t* pUart = init_uart_inst(iTxPin, iRxPin, iBaudRate);
 
     SW65C816Pins    sPins;
@@ -381,31 +301,14 @@ void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
 
     cMaster.Init(&sPins, pUart, 8, 9, 10, 11, 12, 4, 5, 16, 3);
     
-    cMaster.SendData(0x23, true);
     cMaster.SramWriteEnable(true);
-    cMaster.SendAddress(0xFFFC, true);
-    cMaster.SendAddressOutDataOut(true);
-    sleep_us_high_power(500'000);
 
-    cMaster.SendData(0x81, true);
-    cMaster.SendAddress(0xFFFD, true);
-    cMaster.SendAddressOutDataOut(true);
-    sleep_us_high_power(500'000);
-
-    cMaster.SendData(0x4C, true);
-    cMaster.SendAddress(0x8123, true);
-    cMaster.SendAddressOutDataOut(true);
-    sleep_us_high_power(500'000);
-
-    cMaster.SendData(0x23, true);
-    cMaster.SendAddress(0x8124, true);
-    cMaster.SendAddressOutDataOut(true);
-    sleep_us_high_power(500'000);
-
-    cMaster.SendData(0x81, true);
-    cMaster.SendAddress(0x8125, true);
-    cMaster.SendAddressOutDataOut(true);
-    sleep_us_high_power(500'000);
+    cMaster.Write(0xFFFC, 0x23, true);
+    cMaster.Write(0xFFFD, 0x81, true);
+    cMaster.Write(0x8123, 0x4C, true);
+    cMaster.Write(0x8124, 0x23, true);
+    cMaster.Write(0x8125, 0x81, true);
+    cMaster.Write(0x8126, 0x00, true);
 
     cMaster.SramWriteEnable(false);
 
@@ -414,19 +317,122 @@ void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
     cMaster.FreeClock(false);
     cMaster.BusEnable(true);
     
+    int iState = 0;
+
     bool bLed = false;
-    for (int i = 0; ; i++)
+    int  iTick = 0;
+
+    uint64_t delay = 500'000;
+    uint64_t start = time_us_64();
+    uint64_t expectedEnd = start + delay;
+    uint64_t end = start;
+
+    for (;;)
     {
-        if (i == 4)
+        if (iTick == 4)
         {
             cMaster.Reset(false);
         }
         gpio_put(25, bLed);
 
-        cMaster.Tick(bLed);
-        bLed = !bLed;
-        
-        sleep_us_high_power(500'000);
+        if (expectedEnd > end)
+        {
+            end = time_us_64();
+        }
+        else
+        {
+            if (iState == 0)
+            {            
+                bLed = !bLed;
+                iTick++;
+            }
+
+            start = time_us_64();
+            expectedEnd = start + delay;
+            end = start;
+        }
+
+        if ((iState == 0) || (iState == 1))
+        {            
+            cMaster.Tick(bLed);
+        }
+
+        cKeypad.Read();
+        char szLine1[17];
+        char c = cKeypad.GetPressed();
+
+        if (c == '2')
+        {
+            cMaster.FreeClock(false);
+            iState = 0;
+        }
+        else if (c == '1')
+        {
+            cMaster.FreeClock(false);
+            if (iState != 1)
+            {
+                iState = 1;
+            }
+            else
+            {
+                bLed = !bLed;
+                iTick++;
+            }
+        }
+        else if (c == '*')
+        {
+            iTick = 0;
+            cMaster.FreeClock(false);
+            cMaster.Reset(true);
+            iState  = 0;
+        }
+        else if (c == '3')
+        {
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 1500);
+            iState = 2;
+        }
+        else if (c == '4')
+        {
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 500'000);
+            iState = 2;
+        }
+        else if (c == '5')
+        {
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 4'000'000);
+            iState = 2;
+        }
+        else if (c == '6')
+        {
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 8'000'000);
+            iState = 2;
+        }
+        else if (c == '7')
+        {
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 16'000'000);
+            iState = 2;
+        }
+        else if (c == '8')
+        {
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 20'000'000);
+            iState = 2;
+        }
+        else if (c == '8')
+        {
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 24'000'000);
+            iState = 2;
+        }
+        else if (c == '8')
+        {
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 24'000'000);
+            iState = 2;
+        }
+        else if (c == '9')
+        {
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 28'000'000);
+            iState = 2;
+        }
+        sleep_us_high_power(50'000);
+
     }
 }
 
@@ -491,8 +497,6 @@ int main()
 
     //do_uart_slave(0, 1, 115200);
     sleep_us_high_power(250'000);
-
-    do_ltc6903(18, 19, 16, 17, 1'500);
 
     do_uart_master(0, 1, 115200);
     gpio_put(25, false);

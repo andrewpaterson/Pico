@@ -41,8 +41,8 @@ protected:
     void    InitSignal(int iPin, bool bValue);
     void    AddressToString(char* szDest, uint uiAddress);
     void    DataToString(char* szDest, uint uiData);
-    bool    SendMessage(char* szMessage, bool bIgnoreResponse = false);
-    int     SendMessageReceiveByte(char* szMessage);
+    bool    SendMessage(const char* szMessage, bool bIgnoreResponse = false);
+    int     SendMessageReceiveByte(const char* szMessage);
 };
 
 

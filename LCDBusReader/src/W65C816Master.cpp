@@ -42,7 +42,7 @@ void CW65C816Master::InitSignal(int iPin, bool bValue)
 }
 
 
-bool CW65C816Master::SendMessage(char* szMessage, bool bIgnoreResponse)
+bool CW65C816Master::SendMessage(const char* szMessage, bool bIgnoreResponse)
 {
     bool    bResult;
     char    szResponse[256];
@@ -86,7 +86,7 @@ bool CW65C816Master::SendMessage(char* szMessage, bool bIgnoreResponse)
 }
 
 
-int CW65C816Master::SendMessageReceiveByte(char* szMessage)
+int CW65C816Master::SendMessageReceiveByte(const char* szMessage)
 {
     bool    bResult;
     char    szResponse[256];
@@ -186,10 +186,6 @@ bool CW65C816Master::Write(uint uiAddress, uint uiData, bool bIgnoreResponse)
     char    sz[32];
     bool    bResult;
 
-    gpio_put(miPinBE, false);
-    gpio_put(miPinOEB, true);
-    gpio_put(miPinWEB, true);
-
     bResult = SendAddress(uiAddress, bIgnoreResponse);
     if (bResult)
     {
@@ -197,17 +193,11 @@ bool CW65C816Master::Write(uint uiAddress, uint uiData, bool bIgnoreResponse)
         if (bResult)
         {
             AddressOutDataOut(uiData, uiAddress);
-            bResult = SendMessage("IO:D+A\n", bIgnoreResponse);
-            if (bResult)
-            {
-                gpio_put(miPinWEB, false);
-                sleep_us_high_power(10);
-                gpio_put(miPinWEB, true);
-            }
-
-            HighZ();
+            bResult = SendAddressOutDataOut(bIgnoreResponse);
+            return bResult;
         }
     }
+    return false;
 }
 
 
