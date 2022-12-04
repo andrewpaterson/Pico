@@ -186,13 +186,13 @@ bool CW65C816Master::Write(uint uiAddress, uint uiData, bool bIgnoreResponse)
     char    sz[32];
     bool    bResult;
 
+    AddressOutDataOut(uiData, uiAddress);
     bResult = SendAddress(uiAddress, bIgnoreResponse);
     if (bResult)
     {
         bResult = SendData(uiData, bIgnoreResponse);
         if (bResult)
         {
-            AddressOutDataOut(uiData, uiAddress);
             bResult = SendAddressOutDataOut(bIgnoreResponse);
             return bResult;
         }

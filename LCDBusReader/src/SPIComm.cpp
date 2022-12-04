@@ -1,3 +1,4 @@
+#include "GeneralPins.h"
 #include "SPIComm.h"
 
 
@@ -28,7 +29,7 @@ void init_spi(SSPIPins* psPins)
     gpio_init(psPins->pinEnable);
     gpio_set_dir(psPins->pinEnable, GPIO_OUT);
 
-    spi_init(psPins->pSPI, 100000);
+    spi_init(psPins->pSPI, 9600);
 
     spi_set_format( psPins->pSPI,
                     8,    
@@ -44,6 +45,7 @@ void write_spi( SSPIPins* psPins, uint16_t uiData)
     auiData[1] = uiData;
     gpio_put(psPins->pinEnable, psPins->bEnableHigh);
     spi_write_blocking(psPins->pSPI, auiData, 2);
+    sleep_us_high_power(0);
     gpio_put(psPins->pinEnable, !psPins->bEnableHigh);
 }
 

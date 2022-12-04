@@ -85,6 +85,7 @@ void put_LTC6903_frequency(SSPIPins* psSPI, int iHertz)
 
     uint16_t uiData = (iOct << 12) | (iDac << 2) | 0;
 
+    write_spi(psSPI, 0xFFFF);
     write_spi(psSPI, uiData);
 }
 

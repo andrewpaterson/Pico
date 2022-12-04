@@ -90,7 +90,7 @@ uint16_t shift_in(S165InPins* psPins)
     uint16_t    uiData;
     int         iSleep;
 
-    iSleep = 3;
+    iSleep = 10;
     gpio_put(psPins->uiLatchPin, psPins->bLatchHigh);
     sleep_us_high_power(iSleep);
     gpio_put(psPins->uiLatchPin, !psPins->bLatchHigh);
