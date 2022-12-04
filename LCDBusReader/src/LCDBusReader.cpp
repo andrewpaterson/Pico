@@ -265,10 +265,10 @@ int change_frequency(SSPIPins* psPins, CW65C816Master* pcMaster, int iFrequency)
 }
 
 
-void write_program(CW65C816Master* pcMaster, int iAddress, int iByte)
+void write(CW65C816Master* pcMaster, int iAddress, int iByte)
 {
     pcMaster->Write(iAddress, iByte, true);
-    sleep_us_high_power(100000);
+    sleep_us_high_power(5000);
 }
 
 
@@ -278,19 +278,6 @@ void write_program(CW65C816Master* pcMaster)
     pcMaster->FreeClock(false);
 
     pcMaster->SramWriteEnable(true);
-
-    // pcMaster->Write(0xFFFC, 0x23, true);
-    // sleep_us_high_power(100000);
-    // pcMaster->Write(0xFFFD, 0x81, true);
-    // sleep_us_high_power(100000);
-    // pcMaster->Write(0x8123, 0x4C, true);
-    // sleep_us_high_power(100000);
-    // pcMaster->Write(0x8124, 0x23, true);
-    // sleep_us_high_power(100000);
-    // pcMaster->Write(0x8125, 0x81, true);
-    // sleep_us_high_power(100000);
-    // pcMaster->Write(0x8126, 0x00, true);
-    // sleep_us_high_power(100000);
 
     write(pcMaster, 0x0000, 0x5B);
     write(pcMaster, 0x0001, 0x78);
@@ -567,6 +554,8 @@ void write_program(CW65C816Master* pcMaster)
     write(pcMaster, 0xFFFD, 0xE1);
     write(pcMaster, 0xFFFE, 0x99);
     write(pcMaster, 0xFFFF, 0xE1);
+    
+    write(pcMaster, 0xFFE2, 0xFF);
 
     pcMaster->SramWriteEnable(false);
 
@@ -672,28 +661,29 @@ void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
         }
         else
         {
-            strcpy(szLine1, "Half-Step       ");
+            strcpy(szLine1, "Half-Cycle      ");
         }
-        put_lines(&sLCDPins, szLine1, "");
+
+        char szLine2[17];
+        if ((iState == 0) || (iState == 1))
+        {            
+            memset(szLine2, ' ', 16);
+            szLine2[16] = '\0';
+            sprintf(szLine2, "Cycle: %i", iTick / 2);
+            szLine2[strlen(szLine2)] = ' ';
+        }
+        else
+        {
+            strcpy(szLine2, "Free running    ");
+        }
+
+
+        put_lines(&sLCDPins, szLine1, szLine2);
 
         cKeypad.Read();
         char c = cKeypad.GetPressed();
 
-        if (c == '2')
-        {
-            cMaster.FreeClock(false);
-            iState = 0;
-            delay = 500'000;
-            iFrequency = calculate_frequency(delay);
-        }
-        else if (c == '3')
-        {
-            cMaster.FreeClock(false);
-            iState = 0;
-            delay = 100'000;
-            iFrequency = calculate_frequency(delay);
-        }
-        else if (c == '1')
+        if (c == '1')
         {
             cMaster.FreeClock(false);
             if (iState != 1)
@@ -717,25 +707,45 @@ void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
         }
         else if (c == '#')
         {
+            iTick = 0;
            cMaster.Reset(true);
            sleep_us_high_power(10000);
            cMaster.Reset(false);
         }
         else if (c == '0')
         {
-            iState = 0;
+            if (!((iState == 0) || (iState == 1)))
+            {
+                iState = 0;
+            }
             write_program(&cMaster);
             iFrequency = calculate_frequency(delay);
             cMaster.BusEnable(true);
         }
+        else if (c == '2')
+        {
+            cMaster.FreeClock(false);
+            iState = 0;
+            delay = 250'000;
+            iFrequency = calculate_frequency(delay);
+        }
+        else if (c == '3')
+        {
+            cMaster.FreeClock(false);
+            iState = 0;
+            delay = 20'000;
+            iFrequency = calculate_frequency(delay);
+        }
         else if (c == '4')
         {
-            iFrequency = change_frequency(&sLTCPins, &cMaster, 1500);
-            iState = 2;
+            cMaster.FreeClock(false);
+            iState = 0;
+            delay = 2'500;
+            iFrequency = calculate_frequency(delay);
         }
         else if (c == '5')
         {
-            iFrequency = change_frequency(&sLTCPins, &cMaster, 500'000);
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 1500);
             iState = 2;
         }
         else if (c == '6')
@@ -745,20 +755,20 @@ void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
         }
         else if (c == '7')
         {
-            iFrequency = change_frequency(&sLTCPins, &cMaster, 33'470'000);
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 20'000'000);
             iState = 2;
         }
         else if (c == '8')
         {
-            iFrequency = change_frequency(&sLTCPins, &cMaster, 35'000'000);
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 25'000'000);
             iState = 2;
         }
         else if (c == '9')
         {
-            iFrequency = change_frequency(&sLTCPins, &cMaster, 42'000'000);
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 30'000'000);
             iState = 2;
         }
-        sleep_us_high_power(10000);
+        sleep_us_high_power(500);
 
     }
 }
