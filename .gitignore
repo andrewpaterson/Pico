@@ -1,7 +1,8 @@
 /LCDBusReader/.vscode/.cortex-debug.registers.state.json
 /LCDBusReader/.vscode/.cortex-debug.peripherals.state.json
 /LCDBusReader/build/
+/LCDBusReader/core
 /HowDoesItWork/build/
-HowDoesItWork/core
+/HowDoesItWork/core
 
 

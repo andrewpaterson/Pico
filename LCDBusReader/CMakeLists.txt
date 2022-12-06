@@ -17,6 +17,7 @@ add_executable(lcd_bus_reader
   src/UARTComm.cpp
   src/SPIComm.cpp
   src/LTC6903.cpp
+  src/MAX5102.cpp
   src/SDCard.cpp
   src/HexToMem.cpp
   src/W65C816Pins.cpp

@@ -9,6 +9,7 @@
 #include "UARTComm.h"
 #include "SPIComm.h"
 #include "LTC6903.h"
+#include "MAX5102.h"
 #include "SDCard.h"
 #include "Keypad.h"
 #include "SDCardTest.h"
@@ -755,17 +756,17 @@ void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
         }
         else if (c == '7')
         {
-            iFrequency = change_frequency(&sLTCPins, &cMaster, 20'000'000);
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 35'500'000);
             iState = 2;
         }
         else if (c == '8')
         {
-            iFrequency = change_frequency(&sLTCPins, &cMaster, 25'000'000);
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 36'000'000);
             iState = 2;
         }
         else if (c == '9')
         {
-            iFrequency = change_frequency(&sLTCPins, &cMaster, 30'000'000);
+            iFrequency = change_frequency(&sLTCPins, &cMaster, 36'500'000);
             iState = 2;
         }
         sleep_us_high_power(500);
@@ -832,10 +833,56 @@ int main()
     init_io_and_led();
     gpio_put(25, true);
 
-    //do_uart_slave(0, 1, 115200);
-    sleep_us_high_power(250'000);
+    SMAX5102Pins    sMaxPins;
+    bool            bLed;
 
-    do_uart_master(0, 1, 115200);
+    bLed = true;
+    sMaxPins.Init(15, 14, 2, 3, 4, 5, 6, 7, 8, 9);
+    init_max5102(&sMaxPins);
+
+    int iMaxMask =  make_max5102_mask(&sMaxPins, true, true, 0xff);
+    int iZero =  make_max5102_mask(&sMaxPins, false, true, 0);
+    float fValue = 0;
+    float fDir = 32.0f;
+    for (;;)
+    {
+        int iValue = (int)fValue;
+        int iValueB = 0xff - iValue;
+
+        int iWriteANo =  make_max5102_mask(&sMaxPins, false, true, iValue);
+        int iWriteAYes =  make_max5102_mask(&sMaxPins, false, false, iValue);
+        int iWriteBNo =  make_max5102_mask(&sMaxPins, true, true, iValueB);
+        int iWriteBYes =  make_max5102_mask(&sMaxPins, true, false, iValueB);
+
+
+        gpio_put_masked(iMaxMask, iWriteANo);
+        gpio_put_masked(iMaxMask, iWriteAYes);
+        gpio_put_masked(iMaxMask, iWriteANo);
+        gpio_put_masked(iMaxMask, iWriteBNo);
+        gpio_put_masked(iMaxMask, iWriteBYes);
+        gpio_put_masked(iMaxMask, iWriteBNo);
+        fValue += fDir;
+        gpio_put_masked(iMaxMask, iZero);
+        if (fValue >= 0x100)
+        {
+            fValue = 0xff;
+            fDir = -fDir;
+        }
+        else if (fValue < 0)
+        {
+            fValue = 0;
+            fDir = -fDir;
+        }
+
+        bLed = !bLed;
+        gpio_put(25, bLed);
+        sleep_us_high_power(58);
+    }
+
+    //do_uart_slave(0, 1, 115200);
+    // sleep_us_high_power(250'000);
+
+    // do_uart_master(0, 1, 115200);
     gpio_put(25, false);
 }
 
