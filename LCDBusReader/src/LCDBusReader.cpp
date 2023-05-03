@@ -843,7 +843,7 @@ int main()
     int iMaxMask =  make_max5102_mask(&sMaxPins, true, true, 0xff);
     int iZero =  make_max5102_mask(&sMaxPins, false, true, 0);
     float fValue = 0;
-    float fDir = 32.0f;
+    float fDir = 0.5f;
     for (;;)
     {
         int iValue = (int)fValue;
