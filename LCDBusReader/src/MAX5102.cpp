@@ -1,3 +1,4 @@
+#include "GeneralPins.h"
 #include "MAX5102.h"
 
 
@@ -27,14 +28,7 @@ void init_max5102(SMAX5102Pins* psPins)
 
 int make_max5102_mask(SMAX5102Pins* psPins, bool bA0, bool bWRB, int iValue)
 {
-    int iDataMask = (iValue & 0x01 ? (1 << psPins->aiDataPins[0]) : 0) | 
-                (iValue & 0x02 ? (1 << psPins->aiDataPins[1]) : 0) | 
-                (iValue & 0x04 ? (1 << psPins->aiDataPins[2]) : 0) | 
-                (iValue & 0x08 ? (1 << psPins->aiDataPins[3]) : 0) | 
-                (iValue & 0x10 ? (1 << psPins->aiDataPins[4]) : 0) |
-                (iValue & 0x20 ? (1 << psPins->aiDataPins[5]) : 0) | 
-                (iValue & 0x40 ? (1 << psPins->aiDataPins[6]) : 0) | 
-                (iValue & 0x80 ? (1 << psPins->aiDataPins[7]) : 0);
+    int iDataMask = make_8bit_mask(psPins->aiDataPins, iValue);
 
     int iCommandMask = (bA0 ? (1 << psPins->iA0Pin) : 0) |
                         (bWRB ? (1 << psPins->iWRBPin) : 0);

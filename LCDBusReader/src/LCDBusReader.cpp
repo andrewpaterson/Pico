@@ -33,58 +33,65 @@ void blink_led(int iMicrosecondDelay)
 }
 
 
-// void do_shift_LCD(uint uiShiftPin, uint uiStorageLatchPin, uint uiDataOutPin)
-// {
-//     S595OutPins sPins;
-//     sPins.Init(PIN_NOT_SET, uiShiftPin, uiStorageLatchPin, uiDataOutPin, PIN_NOT_SET);
-//     init_shift(&sPins);
+void do_shift_LCD(uint uiShiftPin, uint uiStorageLatchPin, uint uiDataOutPin)
+{
+    S595OutPins sPins;
+    sPins.Init(PIN_NOT_SET, uiShiftPin, uiStorageLatchPin, uiDataOutPin, PIN_NOT_SET);
+    init_shift(&sPins);
 
-//     init_lcd(&sPins);
-//     put_clear(&sPins);
+    init_lcd(&sPins);
+    put_clear(&sPins);
 
-//     int  i = 0;
-//     char szLine1[17];
-//     char szLine2[17];
-//     while(true)
-//     {
-//         kitt(i, szLine1);
-//         message(i, szLine2);
+    int  i = 0;
+    char szLine1[17];
+    char szLine2[17];
+    char* szTemp;
+    while(true)
+    {
+        if (i % 2 == 0)
+        {
+            strcpy(szLine1, "Hello");
+            strcpy(szLine2, "World");
+        }
+        else
+        {
+            strcpy(szLine1, "     ");
+            strcpy(szLine2, "     ");
+        }
+        put_lines(&sPins, szLine1, szLine2);
 
-//         put_lines(&sPins, szLine1, szLine2);
+        sleep_us_high_power(5000000);
 
-//         sleep_us_high_power(200000);
-
-//         i++;
-//     }
-// }
+        i++;
+    }
+}
 
 
-// void do_parallel_LCD(void)
-// {
-//     bool led = true;
+void do_parallel_LCD(void)
+{
+    bool led = true;
 
-//     S11BitLCDPins   sPins;
+    S11BitLCDPins   sPins;
 
-//     sPins.Init(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    sPins.Init(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 
-//     init_lcd(&sPins);
-//     put_clear(&sPins);
+    init_lcd(&sPins);
+    put_clear(&sPins);
 
-//     int  i = 0;
-//     char szLine1[17];
-//     char szLine2[17];
-//     while(true)
-//     {
-//         kitt(i, szLine1);
-//         message(i, szLine2);
+    int  i = 0;
+    char szLine1[17];
+    char szLine2[17];
+    strcpy(szLine1, "Hello");
+    strcpy(szLine2, "World");
+    while(true)
+    {
+        put_lines(&sPins, szLine1, szLine2);
 
-//         put_lines(&sPins, szLine1, szLine2);
+        sleep_us_high_power(5000000);
 
-//         sleep_us_high_power(200000);
-
-//         i++;
-//     }
-// }
+        i++;
+    }
+}
 
 
 void do_ltc6903(int pinClk, int pinTx, int pinRx, int pinEnable, int iHertz)
@@ -828,11 +835,8 @@ void init_io_and_led(void)
 }
 
 
-int main() 
+void do_max5102_dac()
 {
-    init_io_and_led();
-    gpio_put(25, true);
-
     SMAX5102Pins    sMaxPins;
     bool            bLed;
 
@@ -843,7 +847,7 @@ int main()
     int iMaxMask =  make_max5102_mask(&sMaxPins, true, true, 0xff);
     int iZero =  make_max5102_mask(&sMaxPins, false, true, 0);
     float fValue = 0;
-    float fDir = 0.5f;
+    float fDir = 30.0f;
     for (;;)
     {
         int iValue = (int)fValue;
@@ -878,7 +882,141 @@ int main()
         gpio_put(25, bLed);
         sleep_us_high_power(58);
     }
+}
 
+
+void do_keypad_lcd()
+{
+    S165InPins  sKeyPins;
+    CKeypad     cKeypad;
+
+    sKeyPins.Init(26, 27, 28, true, true, true);
+    cKeypad.Init(&sKeyPins);
+
+    S595OutPins sPins;
+    sPins.Init(PIN_NOT_SET, 22, 21, 20, PIN_NOT_SET);
+    init_shift(&sPins);
+
+    init_lcd(&sPins);
+    put_clear(&sPins);
+
+    int  i = 0;
+    char szLine1[17] = "\0";
+    char szLine2[17] = "\0";
+    char* szTemp;
+    int iChar = 0;
+    while(true)
+    {
+        put_lines(&sPins, szLine1, szLine2);
+
+        cKeypad.Read();
+        char c = cKeypad.GetPressed();
+        if (c == '#')
+        {
+            break;
+        }
+
+        if (c != '\0')
+        {
+            if (iChar < 16)
+            {
+                szLine1[iChar] = c;
+                iChar++;
+                szLine1[iChar] = '\0';
+            }
+            else if (iChar < 32)
+            {
+                szLine2[iChar-16] = c;
+                iChar++;
+                szLine2[iChar-16] = '\0';
+            }
+            else
+            {
+                put_clear(&sPins);
+                iChar = 0;
+                szLine1[iChar] = '\0';
+                szLine2[iChar] = '\0';
+            }
+        }
+
+        sleep_us_high_power(50000);
+
+        i++;
+    }
+}
+
+
+int main() 
+{
+    init_io_and_led();
+    gpio_put(25, true);
+
+    int iLeftEnable = 0;
+    int iRightEnable = 1;
+    int iStatusEnable = 15;
+    int iSDCardEnable = 14;
+    int aiEnablePins[] = {iLeftEnable, iRightEnable, iStatusEnable, iSDCardEnable};
+    int iFETEnableMask = make_4bit_mask(aiEnablePins , 0xf);
+    int aiDataPins[] = {2,3,4,5,6,7,8};
+    int iFETDataMask = make_8bit_mask(aiDataPins, 0xff);
+    
+    gpio_init_mask(iFETEnableMask | iFETDataMask);
+    gpio_set_dir_masked(iFETEnableMask, GPIO_OUT);
+    gpio_set_dir_masked(iFETDataMask, GPIO_IN);
+    gpio_put_masked(iFETEnableMask, 0);
+
+    int iStatusEnableMask = make_4bit_mask(aiEnablePins, 1 << iStatusEnable);
+    int iLeftEnableMask = make_4bit_mask(aiEnablePins, 1 << iLeftEnable);
+    int iRightEnableMask = make_4bit_mask(aiEnablePins, 1 << iRightEnable);    
+        
+    float fValue = 0;
+    float fDir = 30.0f;
+    bool bLed = false;
+    for (;;)
+    {
+        int iValue = (int)fValue;
+        int iValueB = 0xff - iValue;
+
+        int iWriteLeft = iLeftEnableMask | make_8bit_mask(aiDataPins, iValue);
+        gpio_put_masked(iFETEnableMask | iFETDataMask, iWriteLeft);
+        gpio_set_dir_masked(iFETDataMask, GPIO_OUT);
+        gpio_put_masked(iFETEnableMask | iFETDataMask, iWriteLeft);
+
+        int iWriteRight = iRightEnableMask | make_8bit_mask(aiDataPins, iValueB);
+        gpio_put_masked(iFETEnableMask | iFETDataMask, iWriteRight);
+
+        fValue += fDir;
+        gpio_put_masked(iFETEnableMask, 0);
+        gpio_set_dir_masked(iFETDataMask, GPIO_IN);
+        if (fValue >= 0x100)
+        {
+            fValue = 0xff;
+            fDir = -fDir;
+        }
+        else if (fValue < 0)
+        {
+            fValue = 0;
+            fDir = -fDir;
+        }
+
+        gpio_put_masked(iFETEnableMask, iStatusEnableMask);
+        int iPins = gpio_get_all();
+        iPins = iPins & iFETDataMask;
+
+        bLed = !bLed;
+        gpio_put(25, bLed);
+        sleep_us_high_power(58);
+    }
+
+    for (;;)
+    {
+        int iStatusData = gpio_get_all() & iFETDataMask;
+        sleep_us_high_power(25000);
+    }
+
+
+    //do_keypad_lcd();
+    
     //do_uart_slave(0, 1, 115200);
     // sleep_us_high_power(250'000);
 
