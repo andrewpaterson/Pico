@@ -61,27 +61,27 @@ uint8_t crc7(uint8_t* pvData, int iLength)
 
 uint16_t crc16(uint8_t* pvData, int iLength) 
 {
-    uint16_t crc;
+    uint16_t uiCRC;
     uint8_t i;
 
-    crc = 0;
+    uiCRC = 0;
 	for (int iByte = 0; iByte < iLength; iByte++)
     {
-        crc = crc ^ ((uint16_t) (pvData[iByte] << 8));
+        uiCRC = uiCRC ^ ((uint16_t) (pvData[iByte] << 8));
         for(int iBit = 0; iBit < 8; iBit++)
         {
-            if( crc & 0x8000)
+            if (uiCRC & 0x8000)
             {
-                crc = (crc << 1) ^ 0x1021;
+                uiCRC = (uiCRC << 1) ^ 0x1021;
             }
             else
             {
-                crc = crc << 1;
+                uiCRC = uiCRC << 1;
             }
         }
     }
 
-    return crc;
+    return uiCRC;
 }
 
 void build_command(uint8_t* pvDest, int iCommand, int iArgument)
