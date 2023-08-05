@@ -38,6 +38,8 @@ void init_sound(SPicoSound* psSound,
 
 void sound_disable_fets(SPicoSound* psSound);
 void sound_set_data_in(SPicoSound* psSound);
+void sound_write_left(SPicoSound* psSound, uint32_t iValue);
+void sound_write_right(SPicoSound* psSound, uint32_t iValue);
 
 
 #endif // __PICO_SOUND_H__

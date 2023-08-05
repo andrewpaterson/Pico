@@ -952,6 +952,7 @@ float fDir = 30.0f;
 bool bLed = false;
 SPicoSound  sSound;
 
+
 bool repeating_timer_callback(struct repeating_timer *t) 
 {
     int iValue = (int)fValue;
@@ -996,18 +997,11 @@ int main()
     init_sound(&sSound, 0, 1, 15, 14, 2, 3, 4, 5, 6,7, 8, 9);
 
     struct repeating_timer timer;
-    add_repeating_timer_us(-500, repeating_timer_callback, NULL, &timer);
+    add_repeating_timer_us(-62, repeating_timer_callback, NULL, &timer);
 
     for (;;)
     {
     }
-
-    // for (;;)
-    // {
-    //     int iStatusData = gpio_get_all() & iFETDataMask;
-    //     sleep_us_high_power(25000);
-    // }
-
 
     //do_keypad_lcd();
     

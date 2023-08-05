@@ -15,8 +15,8 @@ void init_sound(SPicoSound* psSound,
                         int iData6Pin,
                         int iData7Pin)
 {
-    psSound->aiEnablePins = {iLeftEnablePin, iRightEnablePin, iStatusEnablePin, iSDCardEnablePin};
-    psSound->aiDataPins = {iData0Pin, iData1Pin, iData2Pin, iData3Pin, iData4Pin, iData5Pin, iData6Pin, iData7Pin};
+    psSound->aiEnablePins = { iLeftEnablePin, iRightEnablePin, iStatusEnablePin, iSDCardEnablePin };
+    psSound->aiDataPins = { iData0Pin, iData1Pin, iData2Pin, iData3Pin, iData4Pin, iData5Pin, iData6Pin, iData7Pin };
     psSound->iLeftEnablePin = iLeftEnablePin;
     psSound->iRightEnablePin = iRightEnablePin;
     psSound->iStatusEnablePin = iStatusEnablePin;
@@ -32,13 +32,14 @@ void init_sound(SPicoSound* psSound,
     
     gpio_init_mask(psSound->iFETAllMask);
 
-    gpio_set_dir_masked(psSound->iFETAllMask, psSound->iFETAllMask);
+    sound_disable_fets(psSound);
 }
 
 
 void sound_disable_fets(SPicoSound* psSound)
 {
     gpio_set_dir_masked(psSound->iFETAllMask, psSound->iFETEnableMask);
+    gpio_put_masked(psSound->iFETEnableMask, 0);
 }
 
 
@@ -48,8 +49,18 @@ void sound_set_data_in(SPicoSound* psSound)
 }
 
 
-void sound_set_data_out(SPicoSound* psSound)
+void sound_write_left(SPicoSound* psSound, uint32_t iValue)
 {
-    gpio_put_masked(psSound->iFETEnableMask, 0);
+    int iWriteLeft = psSound->iLeftEnableMask | make_8bit_mask(psSound->aiDataPins, iValue);
+    gpio_set_dir_masked(psSound->iFETAllMask, psSound->iFETAllMask);
+    gpio_put_masked(psSound->iFETAllMask , iWriteLeft);
+}
+
+
+void sound_write_right(SPicoSound* psSound, uint32_t iValue)
+{
+    int iWriteRight = psSound->iRightEnableMask | make_8bit_mask(psSound->aiDataPins, iValue);
+    gpio_set_dir_masked(psSound->iFETAllMask, psSound->iFETAllMask);
+    gpio_put_masked(psSound->iFETAllMask , iWriteRight);
 }
 
