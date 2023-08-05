@@ -77,3 +77,14 @@ void sound_write_right(SPicoSound* psSound, uint32_t iValue)
     gpio_put_masked(psSound->iFETAllMask , iWriteRight);
 }
 
+
+uint32_t sound_read_status(SPicoSound* psSound)
+{
+    gpio_set_dir_masked(psSound->iFETAllMask, psSound->iFETEnableMask);
+    gpio_put_masked(psSound->iFETEnableMask, psSound->iStatusEnableMask);
+    uint32_t iPins = gpio_get_all();
+    iPins = iPins & psSound->iFETDataMask;
+    iPins >>= 2;
+    return iPins;
+}
+

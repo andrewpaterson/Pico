@@ -957,26 +957,29 @@ bool repeating_timer_callback(struct repeating_timer *t)
 {
     uint32_t iValue = (uint32_t)fValue;
     uint32_t iValueB = 0xff - iValue;
+    uint32_t iStatus = 0; 
 
-    sound_write_left(&sSound, iValue);
-    sound_write_right(&sSound, iValueB);
-    sound_disable_fets(&sSound);
-    fValue += fDir;
-
-    if (fValue >= 0x100)
+    iStatus = sound_read_status(&sSound);
+    while (iStatus & 0xf == 0xf)
     {
-        fValue = 0xff;
-        fDir = -fDir;
-    }
-    else if (fValue < 0)
-    {
-        fValue = 0;
-        fDir = -fDir;
-    }
+        sound_write_left(&sSound, iValue);
+        sound_write_right(&sSound, iValueB);
+        sound_disable_fets(&sSound);
+        
+        fValue += fDir;
 
-    // gpio_put_masked(iFETEnableMask, iStatusEnableMask);
-    // int iPins = gpio_get_all();
-    // iPins = iPins & iFETDataMask;
+        if (fValue >= 0x100)
+        {
+            fValue = 0xff;
+            fDir = -fDir;
+        }
+        else if (fValue < 0)
+        {
+            fValue = 0;
+            fDir = -fDir;
+        }
+        iStatus = sound_read_status(&sSound);
+    }
 
     bLed = !bLed;
     gpio_put(25, bLed);
@@ -993,7 +996,7 @@ int main()
     init_sound(&sSound, 0, 1, 15, 14, 2, 3, 4, 5, 6,7, 8, 9);
 
     struct repeating_timer timer;
-    add_repeating_timer_us(-62, repeating_timer_callback, NULL, &timer);
+    add_repeating_timer_us(-500, repeating_timer_callback, NULL, &timer);
 
     for (;;)
     {
