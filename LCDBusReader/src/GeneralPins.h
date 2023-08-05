@@ -7,8 +7,8 @@
 
 
 void sleep_us_high_power(uint delay);
-int make_8bit_mask(int* paiPins, int iValue);
-int make_4bit_mask(int* paiPins, int iValue);
+uint32_t make_8bit_mask(int* paiPins, uint32_t iValue);
+uint32_t make_4bit_mask(int* paiPins, uint32_t iValue);
 
 
 #endif // __GENERAL_PINS_H__

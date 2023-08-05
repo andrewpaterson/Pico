@@ -956,22 +956,23 @@ int main()
     int iStatusEnable = 15;
     int iSDCardEnable = 14;
     int aiEnablePins[] = {iLeftEnable, iRightEnable, iStatusEnable, iSDCardEnable};
-    int iFETEnableMask = make_4bit_mask(aiEnablePins , 0xf);
-    int aiDataPins[] = {2,3,4,5,6,7,8};
-    int iFETDataMask = make_8bit_mask(aiDataPins, 0xff);
+    int aiDataPins[] = {2,3,4,5,6,7,8,9};
+    uint32_t iFETEnableMask = make_4bit_mask(aiEnablePins , 0xf);
+    uint32_t iFETDataMask = make_8bit_mask(aiDataPins, 0xff);
     
     gpio_init_mask(iFETEnableMask | iFETDataMask);
-    gpio_set_dir_masked(iFETEnableMask, GPIO_OUT);
-    gpio_set_dir_masked(iFETDataMask, GPIO_IN);
+    gpio_set_dir_masked(iFETEnableMask | iFETDataMask, iFETEnableMask);
     gpio_put_masked(iFETEnableMask, 0);
+    gpio_set_dir_masked(iFETEnableMask | iFETDataMask, iFETEnableMask | iFETDataMask);
 
-    int iStatusEnableMask = make_4bit_mask(aiEnablePins, 1 << iStatusEnable);
-    int iLeftEnableMask = make_4bit_mask(aiEnablePins, 1 << iLeftEnable);
-    int iRightEnableMask = make_4bit_mask(aiEnablePins, 1 << iRightEnable);    
+    int iLeftEnableMask = 1ul << iLeftEnable;
+    int iRightEnableMask = 1ul << iRightEnable; 
+    int iStatusEnableMask = 1ul << iStatusEnable;
         
     float fValue = 0;
     float fDir = 30.0f;
     bool bLed = false;
+
     for (;;)
     {
         int iValue = (int)fValue;
@@ -979,15 +980,13 @@ int main()
 
         int iWriteLeft = iLeftEnableMask | make_8bit_mask(aiDataPins, iValue);
         gpio_put_masked(iFETEnableMask | iFETDataMask, iWriteLeft);
-        gpio_set_dir_masked(iFETDataMask, GPIO_OUT);
-        gpio_put_masked(iFETEnableMask | iFETDataMask, iWriteLeft);
 
         int iWriteRight = iRightEnableMask | make_8bit_mask(aiDataPins, iValueB);
         gpio_put_masked(iFETEnableMask | iFETDataMask, iWriteRight);
 
         fValue += fDir;
         gpio_put_masked(iFETEnableMask, 0);
-        gpio_set_dir_masked(iFETDataMask, GPIO_IN);
+    
         if (fValue >= 0x100)
         {
             fValue = 0xff;
@@ -999,20 +998,20 @@ int main()
             fDir = -fDir;
         }
 
-        gpio_put_masked(iFETEnableMask, iStatusEnableMask);
-        int iPins = gpio_get_all();
-        iPins = iPins & iFETDataMask;
+        // gpio_put_masked(iFETEnableMask, iStatusEnableMask);
+        // int iPins = gpio_get_all();
+        // iPins = iPins & iFETDataMask;
 
         bLed = !bLed;
         gpio_put(25, bLed);
         sleep_us_high_power(58);
     }
 
-    for (;;)
-    {
-        int iStatusData = gpio_get_all() & iFETDataMask;
-        sleep_us_high_power(25000);
-    }
+    // for (;;)
+    // {
+    //     int iStatusData = gpio_get_all() & iFETDataMask;
+    //     sleep_us_high_power(25000);
+    // }
 
 
     //do_keypad_lcd();
