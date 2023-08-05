@@ -10,7 +10,7 @@ struct SPicoSound
     int iStatusEnablePin = 15;
     int iSDCardEnablePin = 14;
     int aiEnablePins[4];
-    int aiDataPins[8] = {2,3,4,5,6,7,8,9};
+    int aiDataPins[8];
 
     uint32_t iFETEnableMask;
     uint32_t iFETDataMask;
@@ -19,7 +19,7 @@ struct SPicoSound
     int iRightEnableMask;
     int iStatusEnableMask;
     int iSDCardEnableMask;
-}
+};
  
 
 void init_sound(SPicoSound* psSound, 

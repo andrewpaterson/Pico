@@ -15,8 +15,20 @@ void init_sound(SPicoSound* psSound,
                         int iData6Pin,
                         int iData7Pin)
 {
-    psSound->aiEnablePins = { iLeftEnablePin, iRightEnablePin, iStatusEnablePin, iSDCardEnablePin };
-    psSound->aiDataPins = { iData0Pin, iData1Pin, iData2Pin, iData3Pin, iData4Pin, iData5Pin, iData6Pin, iData7Pin };
+    psSound->aiEnablePins[0] = iLeftEnablePin;
+    psSound->aiEnablePins[1] = iRightEnablePin;
+    psSound->aiEnablePins[2] = iStatusEnablePin;
+    psSound->aiEnablePins[3] = iSDCardEnablePin;
+
+    psSound->aiDataPins[0] = iData0Pin;
+    psSound->aiDataPins[0] = iData1Pin;
+    psSound->aiDataPins[0] = iData2Pin;
+    psSound->aiDataPins[0] = iData3Pin;
+    psSound->aiDataPins[0] = iData4Pin;
+    psSound->aiDataPins[0] = iData5Pin;
+    psSound->aiDataPins[0] = iData6Pin;
+    psSound->aiDataPins[0] = iData7Pin;
+
     psSound->iLeftEnablePin = iLeftEnablePin;
     psSound->iRightEnablePin = iRightEnablePin;
     psSound->iStatusEnablePin = iStatusEnablePin;
@@ -26,9 +38,10 @@ void init_sound(SPicoSound* psSound,
     psSound->iFETDataMask = make_8bit_mask(psSound->aiDataPins, 0xff);
     psSound->iFETAllMask = psSound->iFETEnableMask | psSound->iFETDataMask;
 
-    psSound->iLeftEnableMask = 1ul << iLeftEnable;
-    psSound->iRightEnableMask = 1ul << iRightEnable; 
-    psSound->iStatusEnableMask = 1ul << iStatusEnable;
+    psSound->iLeftEnableMask = 1ul << psSound->iLeftEnablePin;
+    psSound->iRightEnableMask = 1ul << psSound->iRightEnablePin; 
+    psSound->iStatusEnableMask = 1ul << psSound->iStatusEnablePin;
+    psSound->iSDCardEnableMask = 1ul << psSound->iSDCardEnableMask;    
     
     gpio_init_mask(psSound->iFETAllMask);
 
