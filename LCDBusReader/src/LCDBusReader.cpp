@@ -27,7 +27,7 @@ void blink_led(int iMicrosecondDelay)
     for (;;)
     {
         gpio_put(25, bLed);
-        sleep_us_high_power(iMicrosecondDelay);
+        busy_wait_us_32(iMicrosecondDelay);
 
         bLed = !bLed;
     }
@@ -61,7 +61,7 @@ void do_shift_LCD(uint uiShiftPin, uint uiStorageLatchPin, uint uiDataOutPin)
         }
         put_lines(&sPins, szLine1, szLine2);
 
-        sleep_us_high_power(5000000);
+        busy_wait_us_32(5000000);
 
         i++;
     }
@@ -88,7 +88,7 @@ void do_parallel_LCD(void)
     {
         put_lines(&sPins, szLine1, szLine2);
 
-        sleep_us_high_power(5000000);
+        busy_wait_us_32(5000000);
 
         i++;
     }
@@ -277,7 +277,7 @@ int change_frequency(SSPIPins* psPins, CW65C816Master* pcMaster, int iFrequency)
 void write(CW65C816Master* pcMaster, int iAddress, int iByte)
 {
     pcMaster->Write(iAddress, iByte, true);
-    sleep_us_high_power(5000);
+    busy_wait_us_32(5000);
 }
 
 
@@ -718,7 +718,7 @@ void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
         {
             iTick = 0;
            cMaster.Reset(true);
-           sleep_us_high_power(10000);
+           busy_wait_us_32(10000);
            cMaster.Reset(false);
         }
         else if (c == '0')
@@ -777,7 +777,7 @@ void do_uart_master(int iTxPin, int iRxPin, int iBaudRate)
             iFrequency = change_frequency(&sLTCPins, &cMaster, 36'500'000);
             iState = 2;
         }
-        sleep_us_high_power(500);
+        busy_wait_us_32(500);
 
     }
 }
@@ -821,7 +821,7 @@ void do_uart_slave(int iTxPin, int iRxPin, int iBaudRate)
                 bResult = cSlave.ExecuteMessage(szMessage, szResponse);
                 write_uart_message(pUart, szResponse);
             }
-            sleep_us_high_power(10);
+            busy_wait_us_32(10);
         }
         bLed = !bLed;
     }
@@ -881,7 +881,7 @@ void do_max5102_dac()
 
         bLed = !bLed;
         gpio_put(25, bLed);
-        sleep_us_high_power(58);
+        busy_wait_us_32(58);
     }
 }
 
@@ -940,7 +940,7 @@ void do_keypad_lcd()
             }
         }
 
-        sleep_us_high_power(50000);
+        busy_wait_us_32(50000);
 
         i++;
     }
@@ -948,21 +948,23 @@ void do_keypad_lcd()
 
 
 float fValue = 0;
-float fDir = 30.0f;
+float fDir = 25.0f;
 bool bLed = false;
 SPicoSound  sSound;
 
 
 bool repeating_timer_callback(struct repeating_timer *t) 
 {
-    uint32_t iValue = (uint32_t)fValue;
-    uint32_t iValueB = 0xff - iValue;
-    uint32_t iStatus = 0; 
+    uint32_t iStatus = 0;
 
     iStatus = sound_read_status(&sSound);
     while (iStatus & 0xf == 0xf)
     {
-        sound_write_left(&sSound, iValue);
+        uint32_t iValue = (uint32_t)fValue;
+        uint32_t iValueB = 0xff - iValue;
+
+        sound_write_left(&sSound, 0);
+        sound_disable_fets(&sSound);
         sound_write_right(&sSound, iValueB);
         sound_disable_fets(&sSound);
         
@@ -993,19 +995,15 @@ int main()
     gpio_put(25, true);
 
 
-    init_sound(&sSound, 0, 1, 15, 14, 2, 3, 4, 5, 6,7, 8, 9);
+    init_sound(&sSound, 0, 1, 14, 15, 2, 3, 4, 5, 6,7, 8, 9);
 
     struct repeating_timer timer;
     add_repeating_timer_us(-500, repeating_timer_callback, NULL, &timer);
 
-    for (;;)
-    {
-    }
-
-    //do_keypad_lcd();
+    do_keypad_lcd();
     
     //do_uart_slave(0, 1, 115200);
-    // sleep_us_high_power(250'000);
+    // busy_wait_us_32(250'000);
 
     // do_uart_master(0, 1, 115200);
     gpio_put(25, false);

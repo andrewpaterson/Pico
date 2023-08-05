@@ -112,13 +112,13 @@ void put(S11BitLCDPins* psPins, uint writeMask, uint readMask, bool rs, bool rw,
     gpio_set_dir_out_masked(writeMask);
 
     gpio_put_masked(writeMask, eLow);
-    sleep_us_high_power(eCycleTime);
+    busy_wait_us_32(eCycleTime);
 
     gpio_put_masked(writeMask, eHigh);
-    sleep_us_high_power(eCycleTime);
+    busy_wait_us_32(eCycleTime);
     
     gpio_put_masked(writeMask, eLow);
-    sleep_us_high_power(minDelay + eCycleTime);
+    busy_wait_us_32(minDelay + eCycleTime);
     gpio_put_masked(writeMask, 0);
 }
 

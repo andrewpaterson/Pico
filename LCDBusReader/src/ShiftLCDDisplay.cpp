@@ -26,13 +26,13 @@ void put(S595OutPins* psPins, bool rs, bool rw, uint data, uint minDelay)
     uint16_t uiCommandEHigh = make_command_value(rs, rw, true, data);
 
     shift_out(psPins, uiCommandELow);
-    sleep_us_high_power(eCycleTime);
+    busy_wait_us_32(eCycleTime);
 
     shift_out(psPins, uiCommandEHigh);
-    sleep_us_high_power(eCycleTime);
+    busy_wait_us_32(eCycleTime);
     
     shift_out(psPins, uiCommandELow);
-    sleep_us_high_power(minDelay + eCycleTime);
+    busy_wait_us_32(minDelay + eCycleTime);
     
     shift_out(psPins, 0);
 }

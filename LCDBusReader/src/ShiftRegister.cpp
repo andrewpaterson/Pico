@@ -92,9 +92,9 @@ uint16_t shift_in(S165InPins* psPins)
 
     iSleep = 10;
     gpio_put(psPins->uiLatchPin, psPins->bLatchHigh);
-    sleep_us_high_power(iSleep);
+    busy_wait_us_32(iSleep);
     gpio_put(psPins->uiLatchPin, !psPins->bLatchHigh);
-    sleep_us_high_power(iSleep);
+    busy_wait_us_32(iSleep);
 
     uiData = 0;
     for (i = 0; i < 16; i++)
@@ -102,11 +102,11 @@ uint16_t shift_in(S165InPins* psPins)
         uiData = uiData << 1;
 
         gpio_put(psPins->uiClockPin, psPins->bDataOnClockLow);
-        sleep_us_high_power(iSleep);
+        busy_wait_us_32(iSleep);
         gpio_put(psPins->uiClockPin, !psPins->bDataOnClockLow);
         bBit = gpio_get(psPins->uiDataInPin);
         uiData = uiData | (bBit ? !psPins->bDataInverted : psPins->bDataInverted);
-        sleep_us_high_power(iSleep);
+        busy_wait_us_32(iSleep);
     }
      gpio_put(psPins->uiClockPin, psPins->bDataOnClockLow);
     return uiData;

@@ -45,7 +45,7 @@ void write_spi( SSPIPins* psPins, uint16_t uiData)
     auiData[1] = uiData;
     gpio_put(psPins->pinEnable, psPins->bEnableHigh);
     spi_write_blocking(psPins->pSPI, auiData, 2);
-    sleep_us_high_power(0);
+    busy_wait_us_32(0);
     gpio_put(psPins->pinEnable, !psPins->bEnableHigh);
 }
 

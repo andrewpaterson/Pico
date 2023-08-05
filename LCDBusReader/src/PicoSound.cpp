@@ -21,13 +21,13 @@ void init_sound(SPicoSound* psSound,
     psSound->aiEnablePins[3] = iSDCardEnablePin;
 
     psSound->aiDataPins[0] = iData0Pin;
-    psSound->aiDataPins[0] = iData1Pin;
-    psSound->aiDataPins[0] = iData2Pin;
-    psSound->aiDataPins[0] = iData3Pin;
-    psSound->aiDataPins[0] = iData4Pin;
-    psSound->aiDataPins[0] = iData5Pin;
-    psSound->aiDataPins[0] = iData6Pin;
-    psSound->aiDataPins[0] = iData7Pin;
+    psSound->aiDataPins[1] = iData1Pin;
+    psSound->aiDataPins[2] = iData2Pin;
+    psSound->aiDataPins[3] = iData3Pin;
+    psSound->aiDataPins[4] = iData4Pin;
+    psSound->aiDataPins[5] = iData5Pin;
+    psSound->aiDataPins[6] = iData6Pin;
+    psSound->aiDataPins[7] = iData7Pin;
 
     psSound->iLeftEnablePin = iLeftEnablePin;
     psSound->iRightEnablePin = iRightEnablePin;

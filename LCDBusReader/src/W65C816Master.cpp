@@ -69,7 +69,7 @@ bool CW65C816Master::SendMessage(const char* szMessage, bool bIgnoreResponse)
                 {
                     break;
                 }
-                sleep_us_high_power(1);
+                busy_wait_us_32(1);
             }
 
             if (bResult)
@@ -106,7 +106,7 @@ int CW65C816Master::SendMessageReceiveByte(const char* szMessage)
             {
                 break;
             }
-            sleep_us_high_power(1);
+            busy_wait_us_32(1);
         }
 
         if (bResult)
