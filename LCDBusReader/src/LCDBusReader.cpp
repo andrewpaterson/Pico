@@ -955,17 +955,13 @@ SPicoSound  sSound;
 
 bool repeating_timer_callback(struct repeating_timer *t) 
 {
-    int iValue = (int)fValue;
-    int iValueB = 0xff - iValue;
+    uint32_t iValue = (uint32_t)fValue;
+    uint32_t iValueB = 0xff - iValue;
 
-    int iWriteLeft = iLeftEnableMask | make_8bit_mask(aiDataPins, iValue);
-    gpio_put_masked(iFETEnableMask | iFETDataMask, iWriteLeft);
-
-    int iWriteRight = iRightEnableMask | make_8bit_mask(aiDataPins, iValueB);
-    gpio_put_masked(iFETEnableMask | iFETDataMask, iWriteRight);
-
+    sound_write_left(&sSound, iValue);
+    sound_write_right(&sSound, iValueB);
+    sound_disable_fets(&sSound);
     fValue += fDir;
-    gpio_put_masked(iFETEnableMask, 0);
 
     if (fValue >= 0x100)
     {
