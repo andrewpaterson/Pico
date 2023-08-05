@@ -1,5 +1,7 @@
 #ifndef __PICO_SOUND_H__
 #define __PICO_SOUND_H__
+#include "GeneralPins.h"
+
 
 struct SPicoSound
 {
@@ -8,11 +10,19 @@ struct SPicoSound
     int iStatusEnablePin = 15;
     int iSDCardEnablePin = 14;
     int aiEnablePins[4];
-    int aiDataPins[] = {2,3,4,5,6,7,8,9};
+    int aiDataPins[8] = {2,3,4,5,6,7,8,9};
+
+    uint32_t iFETEnableMask;
+    uint32_t iFETDataMask;
+    uint32_t iFETAllMask;
+    int iLeftEnableMask;
+    int iRightEnableMask;
+    int iStatusEnableMask;
+    int iSDCardEnableMask;
 }
+ 
 
-
-void init_pico_sound(SPicoSound* psSound, 
+void init_sound(SPicoSound* psSound, 
                         int iLeftEnablePin,
                         int iRightEnablePin,
                         int iStatusEnablePin,
@@ -24,15 +34,11 @@ void init_pico_sound(SPicoSound* psSound,
                         int iData4Pin,
                         int iData5Pin,
                         int iData6Pin,
-                        int iData7Pin)
-{
-    aiEnablePins = {iLeftEnablePin, iRightEnablePin, iStatusEnablePin, iSDCardEnablePin};
-    aiDataPins = {iData0Pin, iData1Pin, iData2Pin, iData3Pin, iData4Pin, iData5Pin, iData6Pin, iData7Pin};
-    this->iLeftEnablePin = iLeftEnablePin;
-    this->iRightEnablePin = iRightEnablePin;
-    this->iStatusEnablePin = iStatusEnablePin;
-    this->iSDCardEnablePin = iSDCardEnablePin;
-}
+                        int iData7Pin);
+
+void sound_disable_fets(SPicoSound* psSound);
+void sound_set_data_in(SPicoSound* psSound);
 
 
 #endif // __PICO_SOUND_H__
+

@@ -950,6 +950,7 @@ void do_keypad_lcd()
 float fValue = 0;
 float fDir = 30.0f;
 bool bLed = false;
+SPicoSound  sSound;
 
 bool repeating_timer_callback(struct repeating_timer *t) 
 {
@@ -991,9 +992,8 @@ int main()
     init_io_and_led();
     gpio_put(25, true);
 
-    SPicoSound  sSound;
 
-    init_pico_sound(&sSound, 0, 1, 15, 14, 2, 3, 4, 5, 6,7, 8, 9);
+    init_sound(&sSound, 0, 1, 15, 14, 2, 3, 4, 5, 6,7, 8, 9);
 
     struct repeating_timer timer;
     add_repeating_timer_us(-500, repeating_timer_callback, NULL, &timer);
