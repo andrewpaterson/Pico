@@ -25,6 +25,7 @@ add_executable(lcd_bus_reader
   src/W65C816Slave.cpp
   src/W65C816Master.cpp
   src/Keypad.cpp
+  src/PicoSound.cpp
 )
 
 target_include_directories(lcd_bus_reader PRIVATE

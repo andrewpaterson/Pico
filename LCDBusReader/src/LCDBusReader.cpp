@@ -17,6 +17,7 @@
 #include "W65C816Bus.h"
 #include "W65C816Slave.h"
 #include "W65C816Master.h"
+#include "PicoSound.h"
 
 
 void blink_led(int iMicrosecondDelay)
@@ -946,65 +947,59 @@ void do_keypad_lcd()
 }
 
 
+float fValue = 0;
+float fDir = 30.0f;
+bool bLed = false;
+
+bool repeating_timer_callback(struct repeating_timer *t) 
+{
+    int iValue = (int)fValue;
+    int iValueB = 0xff - iValue;
+
+    int iWriteLeft = iLeftEnableMask | make_8bit_mask(aiDataPins, iValue);
+    gpio_put_masked(iFETEnableMask | iFETDataMask, iWriteLeft);
+
+    int iWriteRight = iRightEnableMask | make_8bit_mask(aiDataPins, iValueB);
+    gpio_put_masked(iFETEnableMask | iFETDataMask, iWriteRight);
+
+    fValue += fDir;
+    gpio_put_masked(iFETEnableMask, 0);
+
+    if (fValue >= 0x100)
+    {
+        fValue = 0xff;
+        fDir = -fDir;
+    }
+    else if (fValue < 0)
+    {
+        fValue = 0;
+        fDir = -fDir;
+    }
+
+    // gpio_put_masked(iFETEnableMask, iStatusEnableMask);
+    // int iPins = gpio_get_all();
+    // iPins = iPins & iFETDataMask;
+
+    bLed = !bLed;
+    gpio_put(25, bLed);
+    return true;
+}
+
+
 int main() 
 {
     init_io_and_led();
     gpio_put(25, true);
 
-    int iLeftEnable = 0;
-    int iRightEnable = 1;
-    int iStatusEnable = 15;
-    int iSDCardEnable = 14;
-    int aiEnablePins[] = {iLeftEnable, iRightEnable, iStatusEnable, iSDCardEnable};
-    int aiDataPins[] = {2,3,4,5,6,7,8,9};
-    uint32_t iFETEnableMask = make_4bit_mask(aiEnablePins , 0xf);
-    uint32_t iFETDataMask = make_8bit_mask(aiDataPins, 0xff);
-    
-    gpio_init_mask(iFETEnableMask | iFETDataMask);
-    gpio_set_dir_masked(iFETEnableMask | iFETDataMask, iFETEnableMask);
-    gpio_put_masked(iFETEnableMask, 0);
-    gpio_set_dir_masked(iFETEnableMask | iFETDataMask, iFETEnableMask | iFETDataMask);
+    SPicoSound  sSound;
 
-    int iLeftEnableMask = 1ul << iLeftEnable;
-    int iRightEnableMask = 1ul << iRightEnable; 
-    int iStatusEnableMask = 1ul << iStatusEnable;
-        
-    float fValue = 0;
-    float fDir = 30.0f;
-    bool bLed = false;
+    init_pico_sound(&sSound, 0, 1, 15, 14, 2, 3, 4, 5, 6,7, 8, 9);
+
+    struct repeating_timer timer;
+    add_repeating_timer_us(-500, repeating_timer_callback, NULL, &timer);
 
     for (;;)
     {
-        int iValue = (int)fValue;
-        int iValueB = 0xff - iValue;
-
-        int iWriteLeft = iLeftEnableMask | make_8bit_mask(aiDataPins, iValue);
-        gpio_put_masked(iFETEnableMask | iFETDataMask, iWriteLeft);
-
-        int iWriteRight = iRightEnableMask | make_8bit_mask(aiDataPins, iValueB);
-        gpio_put_masked(iFETEnableMask | iFETDataMask, iWriteRight);
-
-        fValue += fDir;
-        gpio_put_masked(iFETEnableMask, 0);
-    
-        if (fValue >= 0x100)
-        {
-            fValue = 0xff;
-            fDir = -fDir;
-        }
-        else if (fValue < 0)
-        {
-            fValue = 0;
-            fDir = -fDir;
-        }
-
-        // gpio_put_masked(iFETEnableMask, iStatusEnableMask);
-        // int iPins = gpio_get_all();
-        // iPins = iPins & iFETDataMask;
-
-        bLed = !bLed;
-        gpio_put(25, bLed);
-        sleep_us_high_power(58);
     }
 
     // for (;;)
