@@ -886,6 +886,9 @@ void do_max5102_dac()
 }
 
 
+void key_pressed(char c);
+
+
 void do_keypad_lcd()
 {
     S165InPins  sKeyPins;
@@ -938,6 +941,7 @@ void do_keypad_lcd()
                 szLine1[iChar] = '\0';
                 szLine2[iChar] = '\0';
             }
+            key_pressed(c);
         }
 
         busy_wait_us_32(50000);
@@ -951,42 +955,98 @@ float fValue = 0;
 float fDir = 25.0f;
 bool bLed = false;
 SPicoSound  sSound;
-
+int iSpeaker = 3;
 
 bool repeating_timer_callback(struct repeating_timer *t) 
 {
     uint32_t iStatus = 0;
+    int iCount;
 
+    iCount = 0;
     iStatus = sound_read_status(&sSound);
+    sound_disable_fets(&sSound);
     while (iStatus & 0xf == 0xf)
     {
-        uint32_t iValue = (uint32_t)fValue;
-        uint32_t iValueB = 0xff - iValue;
+        uint32_t iValueL = (uint32_t)fValue;
+        uint32_t iValueR = 0xff - iValueL;
+        if (iSpeaker == 0)
+        {
+            iValueL = 127;
+            iValueR = 127;
+        }
+        else if (iSpeaker == 1)
+        {
+            iValueR = 127;
+        }
+        else if (iSpeaker == 2)
+        {
+            iValueL = 127;
+        }
 
-        sound_write_left(&sSound, 0);
+
+
+        sound_write_left(&sSound, iValueL);
         sound_disable_fets(&sSound);
-        sound_write_right(&sSound, iValueB);
+        sound_write_right(&sSound, iValueR);
         sound_disable_fets(&sSound);
         
         fValue += fDir;
-
+        float fExtra;
         if (fValue >= 0x100)
         {
-            fValue = 0xff;
+            fExtra = fValue - 0x100;
+            fValue = 0xff - fExtra;
             fDir = -fDir;
         }
         else if (fValue < 0)
         {
-            fValue = 0;
+            fExtra = -fValue;
+            fValue = 0 + fExtra;
             fDir = -fDir;
         }
+        busy_wait_us_32(2);
         iStatus = sound_read_status(&sSound);
+        sound_disable_fets(&sSound);
+        iCount++;
     }
 
-    bLed = !bLed;
-    gpio_put(25, bLed);
+    if (iCount > 0)
+    {
+        bLed = !bLed;
+        gpio_put(25, bLed);
+    }
     return true;
 }
+
+
+int iFrequency = 0;
+
+void key_pressed(char c)
+{
+    if ((c >= '0') && (c <= '9'))
+    {
+        iFrequency *= 10;
+        iFrequency += c - '0';
+    }
+    else if (c == '*')
+    {
+        if (iFrequency > 0)
+        {
+            fDir = iFrequency / 32.0f;
+            fValue = 0;
+            iFrequency = 0;
+        }
+        else
+        {
+            iSpeaker++;
+            if (iSpeaker == 4)
+            {
+                iSpeaker = 0;
+            }
+        }
+    }
+}
+
 
 
 int main() 

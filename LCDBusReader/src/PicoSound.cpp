@@ -82,6 +82,7 @@ uint32_t sound_read_status(SPicoSound* psSound)
 {
     gpio_set_dir_masked(psSound->iFETAllMask, psSound->iFETEnableMask);
     gpio_put_masked(psSound->iFETEnableMask, psSound->iStatusEnableMask);
+    busy_wait_us_32(0);
     uint32_t iPins = gpio_get_all();
     iPins = iPins & psSound->iFETDataMask;
     iPins >>= 2;
