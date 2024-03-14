@@ -116,6 +116,7 @@ bool send_command(SSDCardPins* pPins, uint8_t* pvDest)
             busy_wait_us_32(SD_SLEEP);
         }
     }
+    return true;
 }
 
 
