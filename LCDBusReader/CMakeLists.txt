@@ -8,30 +8,30 @@ pico_sdk_init()
 
 add_executable(lcd_bus_reader)
 target_sources(lcd_bus_reader PRIVATE 
-                src/LCDBusReader.cpp
-                src/LCDDisplay.cpp
-                src/GeneralPins.cpp
-                src/HEXDisplay.cpp
-                src/ShiftRegister.cpp
-                src/ShiftLCDDisplay.cpp
-                src/UARTComm.cpp
-                src/SPIComm.cpp
-                src/LTC6903.cpp
-                src/MAX5102.cpp
-                src/SDCard.cpp
-                src/HexToMem.cpp
-                src/W65C816Pins.cpp
-                src/W65C816Bus.cpp
-                src/W65C816Slave.cpp
-                src/W65C816Master.cpp
-                src/Keypad.cpp
-                src/PicoSound.cpp)
+                Source/LCDBusReader.cpp
+                Source/LCDDisplay.cpp
+                Source/GeneralPins.cpp
+                Source/HEXDisplay.cpp
+                Source/ShiftRegister.cpp
+                Source/ShiftLCDDisplay.cpp
+                Source/UARTComm.cpp
+                Source/SPIComm.cpp
+                Source/LTC6903.cpp
+                Source/MAX5102.cpp
+                Source/SDCard.cpp
+                Source/HexToMem.cpp
+                Source/W65C816Pins.cpp
+                Source/W65C816Bus.cpp
+                Source/W65C816Slave.cpp
+                Source/W65C816Master.cpp
+                Source/Keypad.cpp
+                Source/PicoSound.cpp)
 
 target_link_libraries(lcd_bus_reader
     pico_stdlib)
 
 target_include_directories(lcd_bus_reader PRIVATE
-  src/
+  Source/
 )
 
 pico_enable_stdio_usb(lcd_bus_reader 1)
