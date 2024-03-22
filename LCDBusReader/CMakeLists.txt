@@ -40,5 +40,3 @@ pico_enable_stdio_uart(lcd_bus_reader 1)
 pico_add_extra_outputs(lcd_bus_reader)
 
 target_link_libraries(lcd_bus_reader pico_stdlib hardware_spi)
-
-	
