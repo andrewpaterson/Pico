@@ -1067,26 +1067,8 @@ void key_pressed(char c)
 
 int aiData[] = { DATA_0, DATA_1, DATA_2, DATA_3, DATA_4, DATA_5, DATA_6, DATA_7 };
 
-
-int main() 
+void doGPIO()
 {
-    // init_io_and_led();
-    // gpio_put(25, true);
-
-
-    // init_sound(&sSound, 0, 1, 14, 15, 2, 3, 4, 5, 6,7, 8, 9);
-
-    // struct repeating_timer timer;
-    // add_repeating_timer_us(-500, repeating_timer_callback, NULL, &timer);
-
-    //do_keypad_lcd();
-    
-    //do_uart_slave(0, 1, 115200);
-    // busy_wait_us_32(250'000);
-
-    // do_uart_master(0, 1, 115200);
-    // gpio_put(25, false);
-
     stdio_init_all();
     gpio_init(25);
     gpio_init(READ_DATA_0__7);
@@ -1118,6 +1100,14 @@ int main()
     gpio_set_dir(WRITE_DATA_8__15, GPIO_OUT);
     gpio_set_dir(OUT_ENABLE_0__7, GPIO_OUT);
     gpio_set_dir(OUT_ENABLE_8__15, GPIO_OUT);
+
+    int notDataWrite = WRITE_DATA_0__7;
+    int dataWrite = WRITE_DATA_8__15;
+    int notOutEnable = OUT_ENABLE_0__7;
+    int outEnable = OUT_ENABLE_8__15;
+    int readData = READ_DATA_0__7;
+    int notReadData = READ_DATA_8__15;
+
     gpio_set_dir(DATA_0, GPIO_OUT);
     gpio_set_dir(DATA_1, GPIO_OUT);
     gpio_set_dir(DATA_2, GPIO_OUT);
@@ -1127,7 +1117,6 @@ int main()
     gpio_set_dir(DATA_6, GPIO_OUT);
     gpio_set_dir(DATA_7, GPIO_OUT);
 
-    gpio_put(25, true);
     gpio_put(DATA_0, true);
     gpio_put(DATA_1, true);
     gpio_put(DATA_2, true);
@@ -1136,78 +1125,119 @@ int main()
     gpio_put(DATA_5, true);
     gpio_put(DATA_6, true);
     gpio_put(DATA_7, true);
-    gpio_put(OUT_ENABLE_0__7, true);
-    gpio_put(OUT_ENABLE_8__15, true);
-    gpio_put(WRITE_DATA_0__7, true);
-    gpio_put(WRITE_DATA_8__15, true);
-    gpio_put(WRITE_OUT, true);
-    sleep_ms(1);
-    gpio_put(OUT_ENABLE_0__7, false);
-    gpio_put(OUT_ENABLE_8__15, false);
-    gpio_put(WRITE_DATA_0__7, false);
-    gpio_put(WRITE_DATA_8__15, false);
+    gpio_put(notDataWrite, true);  //Latch output enables into pre-register
+    gpio_put(notDataWrite, false);
+    gpio_put(DATA_0, false);
+    gpio_put(DATA_1, false);
+    gpio_put(DATA_2, false);
+    gpio_put(DATA_3, false);
+    gpio_put(DATA_4, false);
+    gpio_put(DATA_5, false);
+    gpio_put(DATA_6, false);
+    gpio_put(DATA_7, false);
+    gpio_put(notOutEnable, true);  //Latch output enables into pre-register
+    gpio_put(notOutEnable, false);
+
+    gpio_put(DATA_0, true);
+    gpio_put(DATA_1, true);
+    gpio_put(DATA_2, true);
+    gpio_put(DATA_3, true);
+    gpio_put(DATA_4, true);
+    gpio_put(DATA_5, true);
+    gpio_put(DATA_6, true);
+    gpio_put(DATA_7, true);
+    gpio_put(dataWrite, true);
+    gpio_put(dataWrite, false);
+    gpio_put(DATA_0, true);
+    gpio_put(DATA_1, true);
+    gpio_put(DATA_2, true);
+    gpio_put(DATA_3, true);
+    gpio_put(DATA_4, true);
+    gpio_put(DATA_5, true);
+    gpio_put(DATA_6, true);
+    gpio_put(DATA_7, true);
+    gpio_put(outEnable, true);  //Latch output enables 8..15 into pre-register
+    gpio_put(outEnable, false);
+
+    gpio_put(WRITE_OUT, true);  //Pulse write line to Write outputs enable pre-register into outputs enable register; disabling outputs 8..15 but enabling outputs 0..7.  This will also write the ouput values with whatever is currently in the output values register.
     gpio_put(WRITE_OUT, false);
 
-    int i = 0;
+    bool b = false;
     for (;;)
     {
-        sleep_ms(32);
-        gpio_put(25, false);
+        gpio_put(READ_IN, true);
+        sleep_us(0);
+        gpio_put(READ_IN, false);
 
-        gpio_put(DATA_0, false);
-        gpio_put(DATA_1, false);
-        gpio_put(DATA_2, false);
-        gpio_put(DATA_3, false);
-        gpio_put(DATA_4, false);
-        gpio_put(DATA_5, false);
-        gpio_put(DATA_6, false);
-        gpio_put(DATA_7, false);
+        gpio_set_dir(DATA_0, GPIO_IN);
+        gpio_set_dir(DATA_1, GPIO_IN);
+        gpio_set_dir(DATA_2, GPIO_IN);
+        gpio_set_dir(DATA_3, GPIO_IN);
+        gpio_set_dir(DATA_4, GPIO_IN);
+        gpio_set_dir(DATA_5, GPIO_IN);
+        gpio_set_dir(DATA_6, GPIO_IN);
+        gpio_set_dir(DATA_7, GPIO_IN);
 
-        if ((i >= 0) && (i <= 7))
-        {
-            gpio_put(WRITE_DATA_8__15, true);
-            gpio_put(WRITE_DATA_8__15, false);
-            gpio_put(aiData[7 - i], true);
-            gpio_put(WRITE_DATA_0__7, true);
-            gpio_put(WRITE_DATA_0__7, false);
-        }
-        else if ((i >= 8) && (i <= 15))
-        {
-            gpio_put(WRITE_DATA_0__7, true);
-            gpio_put(WRITE_DATA_0__7, false);
-            gpio_put(aiData[i - 8], true);
-            gpio_put(WRITE_DATA_8__15, true);
-            gpio_put(WRITE_DATA_8__15, false);
-        }
-        else if ((i >= 16) && (i <= 23))
-        {
-            gpio_put(WRITE_DATA_0__7, true);
-            gpio_put(WRITE_DATA_0__7, false);
-            gpio_put(aiData[23 - i], true);
-            gpio_put(WRITE_DATA_8__15, true);
-            gpio_put(WRITE_DATA_8__15, false);
-        }
-        else if ((i >= 24) && (i <= 31))
-        {
-            gpio_put(WRITE_DATA_8__15, true);
-            gpio_put(WRITE_DATA_8__15, false);
-            gpio_put(aiData[i - 24], true);
-            gpio_put(WRITE_DATA_0__7, true);
-            gpio_put(WRITE_DATA_0__7, false);
-        }
+        gpio_put(readData, true);
+        sleep_us(0);
+        bool gpio0 = gpio_get(DATA_0);
+        bool gpio1 = gpio_get(DATA_1);
+        bool gpio2 = gpio_get(DATA_2);
+        bool gpio3 = gpio_get(DATA_3);
+        bool gpio4 = gpio_get(DATA_4);
+        bool gpio5 = gpio_get(DATA_5);
+        bool gpio6 = gpio_get(DATA_6);
+        bool gpio7 = gpio_get(DATA_7);
+        gpio_put(readData, false);
+        gpio_put(25, gpio0);
+
+        gpio_set_dir(DATA_0, GPIO_OUT);
+        gpio_set_dir(DATA_1, GPIO_OUT);
+        gpio_set_dir(DATA_2, GPIO_OUT);
+        gpio_set_dir(DATA_3, GPIO_OUT);
+        gpio_set_dir(DATA_4, GPIO_OUT);
+        gpio_set_dir(DATA_5, GPIO_OUT);
+        gpio_set_dir(DATA_6, GPIO_OUT);
+        gpio_set_dir(DATA_7, GPIO_OUT);
+
+        gpio_put(DATA_0, gpio7);
+        gpio_put(DATA_1, gpio6);
+        gpio_put(DATA_2, gpio5);
+        gpio_put(DATA_3, gpio4);
+        gpio_put(DATA_4, gpio3);
+        gpio_put(DATA_5, gpio2);
+        gpio_put(DATA_6, gpio1);
+        gpio_put(DATA_7, gpio0);
+        gpio_put(dataWrite, true);
+        gpio_put(dataWrite, false);
 
         gpio_put(WRITE_OUT, true);
         gpio_put(WRITE_OUT, false);
 
-        sleep_ms(32);
-        gpio_put(25, true);
-
-        i++;
-        if (i == 32)
-        {
-            i = 0;
-        }
+        sleep_ms(50);
+        b = !b;
     }
-    return 0;
+}
+
+int main() 
+{
+    // init_io_and_led();
+    // gpio_put(25, true);
+
+
+    // init_sound(&sSound, 0, 1, 14, 15, 2, 3, 4, 5, 6,7, 8, 9);
+
+    // struct repeating_timer timer;
+    // add_repeating_timer_us(-500, repeating_timer_callback, NULL, &timer);
+
+    //do_keypad_lcd();
+    
+    //do_uart_slave(0, 1, 115200);
+    // busy_wait_us_32(250'000);
+
+    // do_uart_master(0, 1, 115200);
+    // gpio_put(25, false);
+
+    doGPIO();
 }
 
