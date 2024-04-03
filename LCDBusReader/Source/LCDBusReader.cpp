@@ -1371,6 +1371,6 @@ int main()
     // do_uart_master(0, 1, 115200);
     // gpio_put(25, false);
 
-    doGPIO(1);
+    doGPIO(0);
 }
 
