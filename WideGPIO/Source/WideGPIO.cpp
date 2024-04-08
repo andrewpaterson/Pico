@@ -5,315 +5,231 @@
 #include "hardware/uart.h"
 #include "hardware/irq.h"
 #include "hardware/gpio.h"
+#include "GeneralPins.h"
 
 
-#define READ_DATA_0__7      8
-#define READ_DATA_8__15     9
-#define READ_IN             10
-#define WRITE_OUT           11
-#define WRITE_DATA_0__7     12
-#define WRITE_DATA_8__15    13
-#define OUT_ENABLE_0__7     14
-#define OUT_ENABLE_8__15    15
-#define DATA_0              16
-#define DATA_1              17
-#define DATA_2              18
-#define DATA_3              19
-#define DATA_4              20
-#define DATA_5              21
-#define DATA_6              22
-#define DATA_7              26
-
-int aiData[] = { DATA_0, DATA_1, DATA_2, DATA_3, DATA_4, DATA_5, DATA_6, DATA_7 };
+#define ENABLE_GPIO             28
 
 
-int doOutput() 
+#define DATA_LINE_0             17
+#define DATA_LINE_1             18
+#define DATA_LINE_2             19
+#define DATA_LINE_3             20
+#define DATA_LINE_4             21
+#define DATA_LINE_5             22
+#define DATA_LINE_6             26
+#define DATA_LINE_7             27
+
+int aiData_8_15[] = { DATA_LINE_0, DATA_LINE_1, DATA_LINE_2, DATA_LINE_3, DATA_LINE_4, DATA_LINE_5, DATA_LINE_6, DATA_LINE_7 };
+int aiData_0_7[] =  { DATA_LINE_7, DATA_LINE_6, DATA_LINE_5, DATA_LINE_4, DATA_LINE_3, DATA_LINE_2, DATA_LINE_1, DATA_LINE_0 };
+
+
+#define ADDR_LINE_ENABLE        8
+#define ADDR_LINE_0             9
+#define ADDR_LINE_1             10
+#define ADDR_LINE_2             11
+#define ADDR_LINE_3             12
+#define ADDR_LINE_4             13
+
+int aiAddress_0_4[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR_LINE_4 };
+
+
+#define READ_IN                 14
+#define WRITE_OUT               15
+
+//A4:0 A3:0 A2..A0:0..7
+#define ADDRESS_READ_GPIO_56_63     0x00
+#define ADDRESS_READ_GPIO_48_55     0x01
+#define ADDRESS_READ_GPIO_40_47     0x02
+#define ADDRESS_READ_GPIO_32_39     0x03
+#define ADDRESS_READ_GPIO_24_31     0x04
+#define ADDRESS_READ_GPIO_16_23     0x05
+#define ADDRESS_READ_GPIO__8_11     0x06
+#define ADDRESS_READ_GPIO__0__7     0x07
+//A4:0 A3:1 A2..A0:0..7
+#define ADDRESS_WRITE_GPIO_56_63    0x08
+#define ADDRESS_WRITE_GPIO_48_55    0x09
+#define ADDRESS_WRITE_GPIO_40_47    0x0A
+#define ADDRESS_WRITE_GPIO_32_39    0x0B
+#define ADDRESS_WRITE_GPIO_24_31    0x0C
+#define ADDRESS_WRITE_GPIO_16_23    0x0D
+#define ADDRESS_WRITE_GPIO__8_11    0x0E
+#define ADDRESS_WRITE_GPIO__0__7    0x0F
+//A4:1 A3:0 A2..A0:0..7
+#define ADDRESS_OUTPUT_GPIO_56_63   0x10
+#define ADDRESS_OUTPUT_GPIO_48_55   0x11
+#define ADDRESS_OUTPUT_GPIO_40_47   0x12
+#define ADDRESS_OUTPUT_GPIO_32_39   0x13
+#define ADDRESS_OUTPUT_GPIO_24_31   0x14
+#define ADDRESS_OUTPUT_GPIO_16_23   0x15
+#define ADDRESS_OUTPUT_GPIO__8_11   0x16
+#define ADDRESS_OUTPUT_GPIO__0__7   0x17
+
+
+void blink_led(int iMicrosecondDelay)
+{
+    bool bLed = true;
+
+    for (;;)
+    {
+        gpio_put(25, bLed);
+        busy_wait_us_32(iMicrosecondDelay);
+
+        bLed = !bLed;
+    }
+}
+
+
+bool gbDataRead = true;
+
+
+void set_data_input()
+{
+    if (!gbDataRead)
+    {
+        gpio_set_dir_in_masked( 1 << DATA_LINE_0 | 
+                                1 << DATA_LINE_1 |
+                                1 << DATA_LINE_2 |
+                                1 << DATA_LINE_3 |
+                                1 << DATA_LINE_4 |
+                                1 << DATA_LINE_5 |
+                                1 << DATA_LINE_6 |
+                                1 << DATA_LINE_7);
+        gbDataRead = true;
+    }
+}
+
+
+void set_data_output()
+{
+    if (gbDataRead)
+    {
+        gpio_set_dir_out_masked(1 << DATA_LINE_0 | 
+                                1 << DATA_LINE_1 |
+                                1 << DATA_LINE_2 |
+                                1 << DATA_LINE_3 |
+                                1 << DATA_LINE_4 |
+                                1 << DATA_LINE_5 |
+                                1 << DATA_LINE_6 |
+                                1 << DATA_LINE_7);
+        gbDataRead = false;                    
+    }
+}
+
+
+uint32_t make_address(uint32_t uiAddress)
+{
+    uint32_t uiAddressOnPins = ( uiAddress & 0x01 ? (1ul << aiAddress_0_4[0]) : 0) | 
+                                (uiAddress & 0x02 ? (1ul << aiAddress_0_4[1]) : 0) | 
+                                (uiAddress & 0x04 ? (1ul << aiAddress_0_4[2]) : 0) | 
+                                (uiAddress & 0x08 ? (1ul << aiAddress_0_4[3]) : 0) | 
+                                (uiAddress & 0x10 ? (1ul << aiAddress_0_4[4]) : 0) |
+                                (1ul << ADDR_LINE_ENABLE);
+    return uiAddressOnPins;
+}
+
+
+uint guiWriteDataMask = (   1 << DATA_LINE_0 | 
+                            1 << DATA_LINE_1 |
+                            1 << DATA_LINE_2 |
+                            1 << DATA_LINE_3 |
+                            1 << DATA_LINE_4 |
+                            1 << DATA_LINE_5 |
+                            1 << DATA_LINE_6 |
+                            1 << DATA_LINE_7 |
+                            1 << ADDR_LINE_ENABLE |
+                            1 << ADDR_LINE_0 |
+                            1 << ADDR_LINE_1 |
+                            1 << ADDR_LINE_2 |
+                            1 << ADDR_LINE_3 |
+                            1 << ADDR_LINE_4 );
+
+uint guiReadDataMask = (1 << ADDR_LINE_ENABLE |
+                        1 << ADDR_LINE_0 |
+                        1 << ADDR_LINE_1 |
+                        1 << ADDR_LINE_2 |
+                        1 << ADDR_LINE_3 |
+                        1 << ADDR_LINE_4 );
+
+
+void write_data(uint32_t uiAddress, uint32_t uiData)
+{
+    uint32_t    uiDataOnPins;
+    uint32_t    uiAddressOnPins;
+
+    if (uiAddress & 1 == 1)
+    {
+        uiDataOnPins = make_8bit_mask(aiData_8_15, uiData);
+    }
+    else
+    {
+        uiDataOnPins = make_8bit_mask(aiData_0_7, uiData);
+    }
+
+    uiAddressOnPins = make_address(uiAddress);
+
+    gpio_put_masked(guiWriteDataMask, uiAddressOnPins | uiDataOnPins);
+}
+
+
+int main() 
 {
     stdio_init_all();
     gpio_init(25);
-    gpio_init(READ_DATA_0__7);
-    gpio_init(READ_DATA_8__15);
+    gpio_set_dir(25, GPIO_OUT);
+    gpio_put(25, true);
+
+    gpio_init(ENABLE_GPIO);
+    gpio_init(DATA_LINE_0);
+    gpio_init(DATA_LINE_1);
+    gpio_init(DATA_LINE_2);
+    gpio_init(DATA_LINE_3);
+    gpio_init(DATA_LINE_4);
+    gpio_init(DATA_LINE_5);
+    gpio_init(DATA_LINE_6);
+    gpio_init(DATA_LINE_7);
+    gpio_init(ADDR_LINE_ENABLE);
+    gpio_init(ADDR_LINE_0);
+    gpio_init(ADDR_LINE_1);
+    gpio_init(ADDR_LINE_2);
+    gpio_init(ADDR_LINE_3);
+    gpio_init(ADDR_LINE_4);
     gpio_init(READ_IN);
     gpio_init(WRITE_OUT);
-    gpio_init(WRITE_DATA_0__7);
-    gpio_init(WRITE_DATA_8__15);
-    gpio_init(OUT_ENABLE_0__7);
-    gpio_init(OUT_ENABLE_8__15);
-    gpio_init(DATA_0);
-    gpio_init(DATA_1);
-    gpio_init(DATA_2);
-    gpio_init(DATA_3);
-    gpio_init(DATA_4);
-    gpio_init(DATA_5);
-    gpio_init(DATA_6);
-    gpio_init(DATA_7);
-    gpio_put_all(0);
 
-    gpio_set_dir(25, GPIO_OUT);
-    gpio_set_dir(READ_DATA_0__7, GPIO_OUT);
-    gpio_set_dir(READ_DATA_8__15, GPIO_OUT);
+    gpio_put_all(0);
+    gpio_set_dir(ENABLE_GPIO, GPIO_OUT);
+    gpio_set_dir(ADDR_LINE_ENABLE, GPIO_OUT);
+    gpio_set_dir(ADDR_LINE_0, GPIO_OUT);
+    gpio_set_dir(ADDR_LINE_1, GPIO_OUT);
+    gpio_set_dir(ADDR_LINE_2, GPIO_OUT);
+    gpio_set_dir(ADDR_LINE_3, GPIO_OUT);
+    gpio_set_dir(ADDR_LINE_4, GPIO_OUT);
     gpio_set_dir(READ_IN, GPIO_OUT);
     gpio_set_dir(WRITE_OUT, GPIO_OUT);
-    gpio_set_dir(WRITE_DATA_0__7, GPIO_OUT);
-    gpio_set_dir(WRITE_DATA_8__15, GPIO_OUT);
-    gpio_set_dir(OUT_ENABLE_0__7, GPIO_OUT);
-    gpio_set_dir(OUT_ENABLE_8__15, GPIO_OUT);
-    gpio_set_dir(DATA_0, GPIO_OUT);
-    gpio_set_dir(DATA_1, GPIO_OUT);
-    gpio_set_dir(DATA_2, GPIO_OUT);
-    gpio_set_dir(DATA_3, GPIO_OUT);
-    gpio_set_dir(DATA_4, GPIO_OUT);
-    gpio_set_dir(DATA_5, GPIO_OUT);
-    gpio_set_dir(DATA_6, GPIO_OUT);
-    gpio_set_dir(DATA_7, GPIO_OUT);
 
-    gpio_put(25, true);
-    gpio_put(DATA_0, true);
-    gpio_put(DATA_1, true);
-    gpio_put(DATA_2, true);
-    gpio_put(DATA_3, true);
-    gpio_put(DATA_4, true);
-    gpio_put(DATA_5, true);
-    gpio_put(DATA_6, true);
-    gpio_put(DATA_7, true);
-    gpio_put(OUT_ENABLE_0__7, true);
-    gpio_put(OUT_ENABLE_8__15, true);
-    gpio_put(WRITE_DATA_0__7, true);
-    gpio_put(WRITE_DATA_8__15, true);
-    gpio_put(WRITE_OUT, true);
-    sleep_ms(1);
-    gpio_put(OUT_ENABLE_0__7, false);
-    gpio_put(OUT_ENABLE_8__15, false);
-    gpio_put(WRITE_DATA_0__7, false);
-    gpio_put(WRITE_DATA_8__15, false);
-    gpio_put(WRITE_OUT, false);
+    gpio_put(ENABLE_GPIO, true);
+    sleep_us(0);
+    gpio_put(ENABLE_GPIO, false);
+
+    set_data_output();
+    gpio_put(25, false);
+
 
     int i = 0;
     for (;;)
     {
-        sleep_ms(32);
-        gpio_put(25, false);
-
-        gpio_put(DATA_0, false);
-        gpio_put(DATA_1, false);
-        gpio_put(DATA_2, false);
-        gpio_put(DATA_3, false);
-        gpio_put(DATA_4, false);
-        gpio_put(DATA_5, false);
-        gpio_put(DATA_6, false);
-        gpio_put(DATA_7, false);
-
-        if ((i >= 0) && (i <= 7))
-        {
-            gpio_put(WRITE_DATA_8__15, true);
-            gpio_put(WRITE_DATA_8__15, false);
-            gpio_put(aiData[7 - i], true);
-            gpio_put(WRITE_DATA_0__7, true);
-            gpio_put(WRITE_DATA_0__7, false);
-        }
-        else if ((i >= 8) && (i <= 15))
-        {
-            gpio_put(WRITE_DATA_0__7, true);
-            gpio_put(WRITE_DATA_0__7, false);
-            gpio_put(aiData[i - 8], true);
-            gpio_put(WRITE_DATA_8__15, true);
-            gpio_put(WRITE_DATA_8__15, false);
-        }
-        else if ((i >= 16) && (i <= 23))
-        {
-            gpio_put(WRITE_DATA_0__7, true);
-            gpio_put(WRITE_DATA_0__7, false);
-            gpio_put(aiData[23 - i], true);
-            gpio_put(WRITE_DATA_8__15, true);
-            gpio_put(WRITE_DATA_8__15, false);
-        }
-        else if ((i >= 24) && (i <= 31))
-        {
-            gpio_put(WRITE_DATA_8__15, true);
-            gpio_put(WRITE_DATA_8__15, false);
-            gpio_put(aiData[i - 24], true);
-            gpio_put(WRITE_DATA_0__7, true);
-            gpio_put(WRITE_DATA_0__7, false);
-        }
-
-        gpio_put(WRITE_OUT, true);
-        gpio_put(WRITE_OUT, false);
-
-        sleep_ms(32);
-        gpio_put(25, true);
-
+        write_data(i, 0xff);
+        sleep_ms(125);
         i++;
-        if (i == 32)
+        if (i > 0x17)
         {
             i = 0;
         }
     }
+
+    blink_led(100000);
+
     return 0;
-}
-
-
-void doGPIO(int iSide)
-{
-    stdio_init_all();
-    gpio_init(25);
-    gpio_init(READ_DATA_0__7);
-    gpio_init(READ_DATA_8__15);
-    gpio_init(READ_IN);
-    gpio_init(WRITE_OUT);
-    gpio_init(WRITE_DATA_0__7);
-    gpio_init(WRITE_DATA_8__15);
-    gpio_init(OUT_ENABLE_0__7);
-    gpio_init(OUT_ENABLE_8__15);
-    gpio_init(DATA_0);
-    gpio_init(DATA_1);
-    gpio_init(DATA_2);
-    gpio_init(DATA_3);
-    gpio_init(DATA_4);
-    gpio_init(DATA_5);
-    gpio_init(DATA_6);
-    gpio_init(DATA_7);
-    gpio_put_all(0);
-
-    gpio_set_dir(25, GPIO_OUT);
-    gpio_set_dir(READ_DATA_0__7, GPIO_OUT);
-    gpio_set_dir(READ_DATA_8__15, GPIO_OUT);
-    gpio_set_dir(READ_IN, GPIO_OUT);
-    gpio_set_dir(WRITE_OUT, GPIO_OUT);
-    gpio_set_dir(WRITE_DATA_0__7, GPIO_OUT);
-    gpio_set_dir(WRITE_DATA_8__15, GPIO_OUT);
-    gpio_set_dir(OUT_ENABLE_0__7, GPIO_OUT);
-    gpio_set_dir(OUT_ENABLE_8__15, GPIO_OUT);
-
-    int notDataWrite = WRITE_DATA_0__7;
-    int dataWrite = WRITE_DATA_8__15;
-    int notOutEnable = OUT_ENABLE_0__7;
-    int outEnable = OUT_ENABLE_8__15;
-    int readData = READ_DATA_0__7;
-    int notReadData = READ_DATA_8__15;
-    if (iSide == 1)
-    {
-        notDataWrite = WRITE_DATA_8__15;
-        dataWrite = WRITE_DATA_0__7;
-        notOutEnable = OUT_ENABLE_8__15;
-        outEnable = OUT_ENABLE_0__7;
-        readData = READ_DATA_8__15;
-        notReadData = READ_DATA_0__7;
-    }
-
-
-    gpio_set_dir(DATA_0, GPIO_OUT);
-    gpio_set_dir(DATA_1, GPIO_OUT);
-    gpio_set_dir(DATA_2, GPIO_OUT);
-    gpio_set_dir(DATA_3, GPIO_OUT);
-    gpio_set_dir(DATA_4, GPIO_OUT);
-    gpio_set_dir(DATA_5, GPIO_OUT);
-    gpio_set_dir(DATA_6, GPIO_OUT);
-    gpio_set_dir(DATA_7, GPIO_OUT);
-
-    gpio_put(DATA_0, true);
-    gpio_put(DATA_1, true);
-    gpio_put(DATA_2, true);
-    gpio_put(DATA_3, true);
-    gpio_put(DATA_4, true);
-    gpio_put(DATA_5, true);
-    gpio_put(DATA_6, true);
-    gpio_put(DATA_7, true);
-    gpio_put(notDataWrite, true);  //Latch output enables into pre-register
-    gpio_put(notDataWrite, false);
-    gpio_put(DATA_0, false);
-    gpio_put(DATA_1, false);
-    gpio_put(DATA_2, false);
-    gpio_put(DATA_3, false);
-    gpio_put(DATA_4, false);
-    gpio_put(DATA_5, false);
-    gpio_put(DATA_6, false);
-    gpio_put(DATA_7, false);
-    gpio_put(notOutEnable, true);  //Latch output enables into pre-register
-    gpio_put(notOutEnable, false);
-
-    gpio_put(DATA_0, true);
-    gpio_put(DATA_1, true);
-    gpio_put(DATA_2, true);
-    gpio_put(DATA_3, true);
-    gpio_put(DATA_4, true);
-    gpio_put(DATA_5, true);
-    gpio_put(DATA_6, true);
-    gpio_put(DATA_7, true);
-    gpio_put(dataWrite, true);
-    gpio_put(dataWrite, false);
-    gpio_put(DATA_0, true);
-    gpio_put(DATA_1, true);
-    gpio_put(DATA_2, true);
-    gpio_put(DATA_3, true);
-    gpio_put(DATA_4, true);
-    gpio_put(DATA_5, true);
-    gpio_put(DATA_6, true);
-    gpio_put(DATA_7, true);
-    gpio_put(outEnable, true);  //Latch output enables 8..15 into pre-register
-    gpio_put(outEnable, false);
-
-    gpio_put(WRITE_OUT, true);  //Pulse write line to Write outputs enable pre-register into outputs enable register; disabling outputs 8..15 but enabling outputs 0..7.  This will also write the ouput values with whatever is currently in the output values register.
-    gpio_put(WRITE_OUT, false);
-
-    bool b = false;
-    for (;;)
-    {
-        gpio_put(READ_IN, true);
-        sleep_us(0);
-        gpio_put(READ_IN, false);
-
-        gpio_set_dir(DATA_0, GPIO_IN);
-        gpio_set_dir(DATA_1, GPIO_IN);
-        gpio_set_dir(DATA_2, GPIO_IN);
-        gpio_set_dir(DATA_3, GPIO_IN);
-        gpio_set_dir(DATA_4, GPIO_IN);
-        gpio_set_dir(DATA_5, GPIO_IN);
-        gpio_set_dir(DATA_6, GPIO_IN);
-        gpio_set_dir(DATA_7, GPIO_IN);
-
-        gpio_put(readData, true);
-        sleep_us(0);
-        bool gpio0 = gpio_get(DATA_0);
-        bool gpio1 = gpio_get(DATA_1);
-        bool gpio2 = gpio_get(DATA_2);
-        bool gpio3 = gpio_get(DATA_3);
-        bool gpio4 = gpio_get(DATA_4);
-        bool gpio5 = gpio_get(DATA_5);
-        bool gpio6 = gpio_get(DATA_6);
-        bool gpio7 = gpio_get(DATA_7);
-        gpio_put(readData, false);
-        gpio_put(25, gpio0);
-
-        gpio_set_dir(DATA_0, GPIO_OUT);
-        gpio_set_dir(DATA_1, GPIO_OUT);
-        gpio_set_dir(DATA_2, GPIO_OUT);
-        gpio_set_dir(DATA_3, GPIO_OUT);
-        gpio_set_dir(DATA_4, GPIO_OUT);
-        gpio_set_dir(DATA_5, GPIO_OUT);
-        gpio_set_dir(DATA_6, GPIO_OUT);
-        gpio_set_dir(DATA_7, GPIO_OUT);
-
-        gpio_put(DATA_0, gpio7);
-        gpio_put(DATA_1, gpio6);
-        gpio_put(DATA_2, gpio5);
-        gpio_put(DATA_3, gpio4);
-        gpio_put(DATA_4, gpio3);
-        gpio_put(DATA_5, gpio2);
-        gpio_put(DATA_6, gpio1);
-        gpio_put(DATA_7, gpio0);
-        gpio_put(dataWrite, true);
-        gpio_put(dataWrite, false);
-
-        gpio_put(WRITE_OUT, true);
-        gpio_put(WRITE_OUT, false);
-
-        sleep_ms(50);
-        b = !b;
-    }
-}
-
-int main() 
-{
-    doGPIO(0);
 }
 

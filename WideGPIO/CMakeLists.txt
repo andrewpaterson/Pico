@@ -8,7 +8,9 @@ pico_sdk_init()
 
 add_executable(wide_gpio)
 target_sources(wide_gpio PRIVATE 
-                Source/WideGPIO.cpp)
+                Source/WideGPIO.cpp
+                Source/GPio16bitTest.cpp
+                Source/GeneralPins.cpp)
 
 target_link_libraries(wide_gpio
     pico_stdlib)
