@@ -271,6 +271,101 @@ void blink_all(int times, int wait)
 }
 
 
+void test_read(bool bReadLeft)
+{
+    uint32_t    uiNoOutput0 = bReadLeft ? ADDRESS_OUTPUT_GPIO__0__7 : ADDRESS_OUTPUT_GPIO_32_39;
+    uint32_t    uiNoOutput1 = bReadLeft ? ADDRESS_OUTPUT_GPIO__8_15 : ADDRESS_OUTPUT_GPIO_40_47;
+    uint32_t    uiNoOutput2 = bReadLeft ? ADDRESS_OUTPUT_GPIO_16_23 : ADDRESS_OUTPUT_GPIO_48_55;
+    uint32_t    uiNoOutput3 = bReadLeft ? ADDRESS_OUTPUT_GPIO_24_31 : ADDRESS_OUTPUT_GPIO_56_63;
+    uint32_t    uiOutput0 = bReadLeft ? ADDRESS_OUTPUT_GPIO_32_39 : ADDRESS_OUTPUT_GPIO__0__7;
+    uint32_t    uiOutput1 = bReadLeft ? ADDRESS_OUTPUT_GPIO_40_47 : ADDRESS_OUTPUT_GPIO__8_15;
+    uint32_t    uiOutput2 = bReadLeft ? ADDRESS_OUTPUT_GPIO_48_55 : ADDRESS_OUTPUT_GPIO_16_23;
+    uint32_t    uiOutput3 = bReadLeft ? ADDRESS_OUTPUT_GPIO_56_63 : ADDRESS_OUTPUT_GPIO_24_31;
+
+    uint32_t    uiRead0 = bReadLeft ? ADDRESS_READ_GPIO__0__7 : ADDRESS_READ_GPIO_32_39;
+    uint32_t    uiRead1 = bReadLeft ? ADDRESS_READ_GPIO__8_15 : ADDRESS_READ_GPIO_40_47;
+    uint32_t    uiRead2 = bReadLeft ? ADDRESS_READ_GPIO_16_23 : ADDRESS_READ_GPIO_48_55;
+    uint32_t    uiRead3 = bReadLeft ? ADDRESS_READ_GPIO_24_31 : ADDRESS_READ_GPIO_56_63;
+
+    uint32_t    uiWrite0 = bReadLeft ? ADDRESS_WRITE_GPIO_32_39 : ADDRESS_WRITE_GPIO__0__7;
+    uint32_t    uiWrite1 = bReadLeft ? ADDRESS_WRITE_GPIO_40_47 : ADDRESS_WRITE_GPIO__8_15;
+    uint32_t    uiWrite2 = bReadLeft ? ADDRESS_WRITE_GPIO_48_55 : ADDRESS_WRITE_GPIO_16_23;
+    uint32_t    uiWrite3 = bReadLeft ? ADDRESS_WRITE_GPIO_56_63 : ADDRESS_WRITE_GPIO_24_31;
+
+    set_all_data(0x00);
+
+    write_data(uiNoOutput0, 0x00);
+    write_data(uiNoOutput1, 0x00);
+    write_data(uiNoOutput2, 0x00);
+    write_data(uiNoOutput3, 0x00);
+    write_data(uiOutput0, 0xff);
+    write_data(uiOutput1, 0xff);
+    write_data(uiOutput2, 0Xff);
+    write_data(uiOutput3, 0xff);
+    write_data();
+
+    uint32_t    uiValue;
+    for (;;)
+    {
+        read_data();
+        uiValue = read_data(uiRead0);
+        write_data(uiWrite0, uiValue);
+
+        uiValue = read_data(uiRead1);
+        write_data(uiWrite1, uiValue);
+
+        uiValue = read_data(uiRead2);
+        write_data(uiWrite2, uiValue);
+
+        uiValue = read_data(uiRead3);
+        write_data(uiWrite3, uiValue);
+        write_data();
+    }
+}
+
+
+void test_write(void)
+{
+    for (;;)
+    {
+        blink_all(2, 150);
+
+        set_all_output(0xff);
+        write_data();
+        for (int i = 0; i < 64; i++)
+        {
+            int iDataOffset;
+            int iAddress;
+            set_all_data(0x00);
+
+            iAddress = i / 8;
+            iDataOffset = 1 << (7 - (i % 8));
+            write_data(ADDRESS_WRITE_GPIO__0__7 - iAddress, iDataOffset);
+            write_data();
+            sleep_ms(40);
+        }
+
+        blink_all(3, 150);
+
+        set_all_data(0xff);
+        set_all_output(0x00);
+        write_data();
+        for (int i = 63; i >= 0; i--)
+        {
+            int iDataOffset;
+            int iAddress;
+            set_all_output(0x00);
+
+            iAddress = i / 8;
+            iDataOffset = 1 << (7 - (i % 8));
+            write_data(ADDRESS_OUTPUT_GPIO__0__7 - iAddress, iDataOffset);
+            write_data();
+            sleep_ms(40);
+        }
+    }
+}
+
+
 int main() 
 {
     stdio_init_all();
@@ -313,94 +408,8 @@ int main()
 
     gpio_put(25, false);
 
-    uint32_t    uiNoOutput0 = ADDRESS_OUTPUT_GPIO__0__7;
-    uint32_t    uiNoOutput1 = ADDRESS_OUTPUT_GPIO__8_15;
-    uint32_t    uiNoOutput2 = ADDRESS_OUTPUT_GPIO_16_23;
-    uint32_t    uiNoOutput3 = ADDRESS_OUTPUT_GPIO_24_31;
-    uint32_t    uiOutput0 = ADDRESS_OUTPUT_GPIO_32_39;
-    uint32_t    uiOutput1 = ADDRESS_OUTPUT_GPIO_40_47;
-    uint32_t    uiOutput2 = ADDRESS_OUTPUT_GPIO_48_55;
-    uint32_t    uiOutput3 = ADDRESS_OUTPUT_GPIO_56_63;
-
-    uint32_t    uiRead0 = ADDRESS_READ_GPIO__0__7;
-    uint32_t    uiRead1 = ADDRESS_READ_GPIO__8_15;
-    uint32_t    uiRead2 = ADDRESS_READ_GPIO_16_23;
-    uint32_t    uiRead3 = ADDRESS_READ_GPIO_24_31;
-
-    uint32_t    uiWrite0 = ADDRESS_WRITE_GPIO_32_39;
-    uint32_t    uiWrite1 = ADDRESS_WRITE_GPIO_40_47;
-    uint32_t    uiWrite2 = ADDRESS_WRITE_GPIO_48_55;
-    uint32_t    uiWrite3 = ADDRESS_WRITE_GPIO_56_63;
-
-    set_all_data(0x00);
-
-    write_data(uiNoOutput0, 0x00);
-    write_data(uiNoOutput1, 0x00);
-    write_data(uiNoOutput2, 0x00);
-    write_data(uiNoOutput3, 0x00);
-    write_data(uiOutput0, 0xff);
-    write_data(uiOutput1, 0xff);
-    write_data(uiOutput2, 0Xff);
-    write_data(uiOutput3, 0xff);
-    write_data();
-
-    uint32_t    uiValue;
-    for (;;)
-    {
-        read_data();
-        uiValue = read_data(uiRead0);
-        write_data(uiWrite0, uiValue);
-
-        uiValue = read_data(uiRead1);
-        write_data(uiWrite1, uiValue);
-
-        uiValue = read_data(uiRead2);
-        write_data(uiWrite2, uiValue);
-
-        uiValue = read_data(uiRead3);
-        write_data(uiWrite3, uiValue);
-        write_data();
-    }
- 
-    // blink_led(100000);
-
-    for (;;)
-    {
-        blink_all(2, 125);
-
-        set_all_output(0xff);
-        write_data();
-        for (int i = 0; i < 64; i++)
-        {
-            int iDataOffset;
-            int iAddress;
-            set_all_data(0x00);
-
-            iAddress = i / 8;
-            iDataOffset = 1 << (7 - (i % 8));
-            write_data(ADDRESS_WRITE_GPIO__0__7 - iAddress, iDataOffset);
-            write_data();
-            sleep_ms(25);
-        }
-
-        blink_all(1, 125);
-
-        set_all_data(0xff);
-        set_all_output(0x00);
-        write_data();
-        for (int i = 63; i >= 0; i--)
-        {
-            int iDataOffset;
-            int iAddress;
-            set_all_output(0x00);
-
-            iAddress = i / 8;
-            iDataOffset = 1 << (7 - (i % 8));
-            write_data(ADDRESS_OUTPUT_GPIO__0__7 - iAddress, iDataOffset);
-            write_data();
-            sleep_ms(25);
-        }
-    }
+    test_read(true);
+    //test_write();
 
     blink_led(100000);
     return 0;
