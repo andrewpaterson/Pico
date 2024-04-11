@@ -44,7 +44,7 @@ int aiAddress_0_4[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR
 #define ADDRESS_READ_GPIO_32_39     0x03
 #define ADDRESS_READ_GPIO_24_31     0x04
 #define ADDRESS_READ_GPIO_16_23     0x05
-#define ADDRESS_READ_GPIO__8_11     0x06
+#define ADDRESS_READ_GPIO__8_15     0x06
 #define ADDRESS_READ_GPIO__0__7     0x07
 //A4:0 A3:1 A2..A0:0..7
 #define ADDRESS_WRITE_GPIO_56_63    0x08
@@ -53,7 +53,7 @@ int aiAddress_0_4[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR
 #define ADDRESS_WRITE_GPIO_32_39    0x0B
 #define ADDRESS_WRITE_GPIO_24_31    0x0C
 #define ADDRESS_WRITE_GPIO_16_23    0x0D
-#define ADDRESS_WRITE_GPIO__8_11    0x0E
+#define ADDRESS_WRITE_GPIO__8_15    0x0E
 #define ADDRESS_WRITE_GPIO__0__7    0x0F
 //A4:1 A3:0 A2..A0:0..7
 #define ADDRESS_OUTPUT_GPIO_56_63   0x10
@@ -62,7 +62,7 @@ int aiAddress_0_4[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR
 #define ADDRESS_OUTPUT_GPIO_32_39   0x13
 #define ADDRESS_OUTPUT_GPIO_24_31   0x14
 #define ADDRESS_OUTPUT_GPIO_16_23   0x15
-#define ADDRESS_OUTPUT_GPIO__8_11   0x16
+#define ADDRESS_OUTPUT_GPIO__8_15   0x16
 #define ADDRESS_OUTPUT_GPIO__0__7   0x17
 
 
@@ -117,14 +117,14 @@ void set_data_output()
 }
 
 
-uint32_t make_address(uint32_t uiAddress)
+uint32_t make_address(uint32_t uiAddress, bool bEnable)
 {
     uint32_t uiAddressOnPins = ( uiAddress & 0x01 ? (1ul << aiAddress_0_4[0]) : 0) | 
                                 (uiAddress & 0x02 ? (1ul << aiAddress_0_4[1]) : 0) | 
                                 (uiAddress & 0x04 ? (1ul << aiAddress_0_4[2]) : 0) | 
                                 (uiAddress & 0x08 ? (1ul << aiAddress_0_4[3]) : 0) | 
                                 (uiAddress & 0x10 ? (1ul << aiAddress_0_4[4]) : 0) |
-                                (1ul << ADDR_LINE_ENABLE);
+                                (bEnable ? (1ul << ADDR_LINE_ENABLE) : 0);
     return uiAddressOnPins;
 }
 
@@ -166,9 +166,108 @@ void write_data(uint32_t uiAddress, uint32_t uiData)
         uiDataOnPins = make_8bit_mask(aiData_0_7, uiData);
     }
 
-    uiAddressOnPins = make_address(uiAddress);
-
+    set_data_output();
+    uiAddressOnPins = make_address(uiAddress, true);
     gpio_put_masked(guiWriteDataMask, uiAddressOnPins | uiDataOnPins);
+
+    uiAddressOnPins = make_address(uiAddress, false);
+    gpio_put_masked(guiWriteDataMask, uiAddressOnPins | uiDataOnPins);
+}
+
+
+void write_data(void)
+{
+    gpio_put(WRITE_OUT, true);
+    gpio_put(WRITE_OUT, false);
+}
+
+
+void read_data(void)
+{
+    gpio_put(READ_IN, true);
+    gpio_put(READ_IN, false);
+}
+
+
+uint32_t read_data(uint32_t uiAddress)
+{
+    uint32_t    uiDataOnPins;
+    uint32_t    uiAddressOnPins;
+    uint32_t    uiValue;
+
+    set_data_input();
+
+    uiAddressOnPins = make_address(uiAddress, true);
+    gpio_put_masked(guiReadDataMask, uiAddressOnPins);
+    for (int i = 0; i < 1; i++)
+    {
+        asm volatile("nop");
+    }
+
+    uiDataOnPins = gpio_get_all();
+    uiAddressOnPins = make_address(uiAddress, false);
+    gpio_put_masked(guiReadDataMask, uiAddressOnPins);
+    
+    if (uiAddress & 1 == 1)
+    {
+        uiValue =   (uiDataOnPins & (1ul << aiData_8_15[0]) ? 1 << 0 : 0) | 
+                    (uiDataOnPins & (1ul << aiData_8_15[1]) ? 1 << 1 : 0) | 
+                    (uiDataOnPins & (1ul << aiData_8_15[2]) ? 1 << 2 : 0) | 
+                    (uiDataOnPins & (1ul << aiData_8_15[3]) ? 1 << 3 : 0) | 
+                    (uiDataOnPins & (1ul << aiData_8_15[4]) ? 1 << 4 : 0) | 
+                    (uiDataOnPins & (1ul << aiData_8_15[5]) ? 1 << 5 : 0) | 
+                    (uiDataOnPins & (1ul << aiData_8_15[6]) ? 1 << 6 : 0) | 
+                    (uiDataOnPins & (1ul << aiData_8_15[7]) ? 1 << 7 : 0);
+
+    }
+    else
+    {
+        uiValue =   (uiDataOnPins & (1ul << aiData_0_7[0]) ? 1 << 0 : 0) | 
+                    (uiDataOnPins & (1ul << aiData_0_7[1]) ? 1 << 1 : 0) | 
+                    (uiDataOnPins & (1ul << aiData_0_7[2]) ? 1 << 2 : 0) | 
+                    (uiDataOnPins & (1ul << aiData_0_7[3]) ? 1 << 3 : 0) | 
+                    (uiDataOnPins & (1ul << aiData_0_7[4]) ? 1 << 4 : 0) | 
+                    (uiDataOnPins & (1ul << aiData_0_7[5]) ? 1 << 5 : 0) | 
+                    (uiDataOnPins & (1ul << aiData_0_7[6]) ? 1 << 6 : 0) | 
+                    (uiDataOnPins & (1ul << aiData_0_7[7]) ? 1 << 7 : 0);
+    }
+
+    return uiValue;
+}
+
+
+void set_all_output(unsigned char uiValue)
+{
+    for (int j = ADDRESS_OUTPUT_GPIO_56_63; j <= ADDRESS_OUTPUT_GPIO__0__7; j++)
+    {
+        write_data(j, uiValue);
+    }
+}
+
+
+void set_all_data(unsigned char uiValue)
+{
+    for (int j = ADDRESS_WRITE_GPIO_56_63; j <= ADDRESS_WRITE_GPIO__0__7; j++)
+    {
+        write_data(j, uiValue);
+    }
+}
+
+
+void blink_all(int times, int wait)
+{
+    set_all_output(0xff);
+
+    for (int i = 0; i < times; i++)
+    {
+        set_all_data(0x00);
+        write_data();
+        sleep_ms(wait);
+
+        set_all_data(0xff);
+        write_data();
+        sleep_ms(wait);
+    }
 }
 
 
@@ -212,24 +311,98 @@ int main()
     sleep_us(0);
     gpio_put(ENABLE_GPIO, false);
 
-    set_data_output();
     gpio_put(25, false);
 
+    uint32_t    uiNoOutput0 = ADDRESS_OUTPUT_GPIO__0__7;
+    uint32_t    uiNoOutput1 = ADDRESS_OUTPUT_GPIO__8_15;
+    uint32_t    uiNoOutput2 = ADDRESS_OUTPUT_GPIO_16_23;
+    uint32_t    uiNoOutput3 = ADDRESS_OUTPUT_GPIO_24_31;
+    uint32_t    uiOutput0 = ADDRESS_OUTPUT_GPIO_32_39;
+    uint32_t    uiOutput1 = ADDRESS_OUTPUT_GPIO_40_47;
+    uint32_t    uiOutput2 = ADDRESS_OUTPUT_GPIO_48_55;
+    uint32_t    uiOutput3 = ADDRESS_OUTPUT_GPIO_56_63;
 
-    int i = 0;
+    uint32_t    uiRead0 = ADDRESS_READ_GPIO__0__7;
+    uint32_t    uiRead1 = ADDRESS_READ_GPIO__8_15;
+    uint32_t    uiRead2 = ADDRESS_READ_GPIO_16_23;
+    uint32_t    uiRead3 = ADDRESS_READ_GPIO_24_31;
+
+    uint32_t    uiWrite0 = ADDRESS_WRITE_GPIO_32_39;
+    uint32_t    uiWrite1 = ADDRESS_WRITE_GPIO_40_47;
+    uint32_t    uiWrite2 = ADDRESS_WRITE_GPIO_48_55;
+    uint32_t    uiWrite3 = ADDRESS_WRITE_GPIO_56_63;
+
+    set_all_data(0x00);
+
+    write_data(uiNoOutput0, 0x00);
+    write_data(uiNoOutput1, 0x00);
+    write_data(uiNoOutput2, 0x00);
+    write_data(uiNoOutput3, 0x00);
+    write_data(uiOutput0, 0xff);
+    write_data(uiOutput1, 0xff);
+    write_data(uiOutput2, 0Xff);
+    write_data(uiOutput3, 0xff);
+    write_data();
+
+    uint32_t    uiValue;
     for (;;)
     {
-        write_data(i, 0xff);
-        sleep_ms(125);
-        i++;
-        if (i > 0x17)
+        read_data();
+        uiValue = read_data(uiRead0);
+        write_data(uiWrite0, uiValue);
+
+        uiValue = read_data(uiRead1);
+        write_data(uiWrite1, uiValue);
+
+        uiValue = read_data(uiRead2);
+        write_data(uiWrite2, uiValue);
+
+        uiValue = read_data(uiRead3);
+        write_data(uiWrite3, uiValue);
+        write_data();
+    }
+ 
+    // blink_led(100000);
+
+    for (;;)
+    {
+        blink_all(2, 125);
+
+        set_all_output(0xff);
+        write_data();
+        for (int i = 0; i < 64; i++)
         {
-            i = 0;
+            int iDataOffset;
+            int iAddress;
+            set_all_data(0x00);
+
+            iAddress = i / 8;
+            iDataOffset = 1 << (7 - (i % 8));
+            write_data(ADDRESS_WRITE_GPIO__0__7 - iAddress, iDataOffset);
+            write_data();
+            sleep_ms(25);
+        }
+
+        blink_all(1, 125);
+
+        set_all_data(0xff);
+        set_all_output(0x00);
+        write_data();
+        for (int i = 63; i >= 0; i--)
+        {
+            int iDataOffset;
+            int iAddress;
+            set_all_output(0x00);
+
+            iAddress = i / 8;
+            iDataOffset = 1 << (7 - (i % 8));
+            write_data(ADDRESS_OUTPUT_GPIO__0__7 - iAddress, iDataOffset);
+            write_data();
+            sleep_ms(25);
         }
     }
 
     blink_led(100000);
-
     return 0;
 }
 
