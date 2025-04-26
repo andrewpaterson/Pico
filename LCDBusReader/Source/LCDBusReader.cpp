@@ -1056,6 +1056,7 @@ void key_pressed(char c)
 #define WRITE_DATA_8__15    13
 #define OUT_ENABLE_0__7     14
 #define OUT_ENABLE_8__15    15
+
 #define DATA_0              16
 #define DATA_1              17
 #define DATA_2              18
@@ -1064,6 +1065,15 @@ void key_pressed(char c)
 #define DATA_5              21
 #define DATA_6              22
 #define DATA_7              26
+
+#define PWR_12V             0
+#define PWR_5V_A            1
+#define PWR_5V_B            2
+#define PWR_5V_C            3
+#define PWR_GND_A           4
+#define PWR_GND_B           5
+#define PWR_GND_C           6
+#define PWR_GND_D           7
 
 int aiData[] = { DATA_0, DATA_1, DATA_2, DATA_3, DATA_4, DATA_5, DATA_6, DATA_7 };
 
@@ -1087,7 +1097,34 @@ int doOutput()
     gpio_init(DATA_5);
     gpio_init(DATA_6);
     gpio_init(DATA_7);
+
+    gpio_init(PWR_12V);
+    gpio_init(PWR_5V_A);
+    gpio_init(PWR_5V_B);
+    gpio_init(PWR_5V_C);
+    gpio_init(PWR_GND_A);
+    gpio_init(PWR_GND_B);
+    gpio_init(PWR_GND_C);
+    gpio_init(PWR_GND_D);
+
     gpio_put_all(0);
+
+    gpio_set_dir(PWR_12V, GPIO_OUT);
+    gpio_set_dir(PWR_5V_A, GPIO_OUT);    
+    gpio_set_dir(PWR_5V_B, GPIO_OUT);
+    gpio_set_dir(PWR_5V_C, GPIO_OUT);    
+    gpio_set_dir(PWR_GND_A, GPIO_OUT);
+    gpio_set_dir(PWR_GND_B, GPIO_OUT);    
+    gpio_set_dir(PWR_GND_C, GPIO_OUT);
+    gpio_set_dir(PWR_GND_D, GPIO_OUT);    
+    gpio_put(PWR_12V, true);
+    gpio_put(PWR_5V_A, true);
+    gpio_put(PWR_5V_B, true);
+    gpio_put(PWR_5V_C, true);
+    gpio_put(PWR_GND_A, false);
+    gpio_put(PWR_GND_B, false);
+    gpio_put(PWR_GND_C, false);
+    gpio_put(PWR_GND_D, false);
 
     gpio_set_dir(25, GPIO_OUT);
     gpio_set_dir(READ_DATA_0__7, GPIO_OUT);
@@ -1371,6 +1408,7 @@ int main()
     // do_uart_master(0, 1, 115200);
     // gpio_put(25, false);
 
-    doGPIO(0);
+    doOutput();
+    //doGPIO(0);
 }
 

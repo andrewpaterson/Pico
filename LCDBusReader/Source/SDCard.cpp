@@ -84,6 +84,7 @@ uint16_t crc16(uint8_t* pvData, int iLength)
     return uiCRC;
 }
 
+
 void build_command(uint8_t* pvDest, int iCommand, int iArgument)
 {
     pvDest[0] = 0x40 | (iCommand & 0x3f);  //0..1...command[5..0]...

@@ -10,6 +10,14 @@
 
 #define ENABLE_GPIO             28
 
+#define PWR_12V                 0
+#define PWR_5V_A                1
+#define PWR_5V_B                2
+#define PWR_5V_C                3
+#define PWR_GND_A               4  
+#define PWR_GND_B               5
+#define PWR_GND_C               6
+#define PWR_GND_D               7
 
 #define DATA_LINE_0             17
 #define DATA_LINE_1             18
@@ -30,13 +38,15 @@ int aiData_0_7[] =  { DATA_LINE_7, DATA_LINE_6, DATA_LINE_5, DATA_LINE_4, DATA_L
 #define ADDR_LINE_2             11
 #define ADDR_LINE_3             12
 #define ADDR_LINE_4             13
+#define ADDR_LINE_5             14
 
 int aiAddress_0_4[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR_LINE_4 };
 
 
-#define READ_IN                 14
-#define WRITE_OUT               15
+#define READ_IN                 15
+#define WRITE_OUT               16
 
+//Addresses
 //A4:0 A3:0 A2..A0:0..7
 #define ADDRESS_READ_GPIO_56_63     0x00
 #define ADDRESS_READ_GPIO_48_55     0x01
@@ -47,23 +57,23 @@ int aiAddress_0_4[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR
 #define ADDRESS_READ_GPIO__8_15     0x06
 #define ADDRESS_READ_GPIO__0__7     0x07
 //A4:0 A3:1 A2..A0:0..7
-#define ADDRESS_WRITE_GPIO_56_63    0x08
-#define ADDRESS_WRITE_GPIO_48_55    0x09
-#define ADDRESS_WRITE_GPIO_40_47    0x0A
-#define ADDRESS_WRITE_GPIO_32_39    0x0B
-#define ADDRESS_WRITE_GPIO_24_31    0x0C
-#define ADDRESS_WRITE_GPIO_16_23    0x0D
-#define ADDRESS_WRITE_GPIO__8_15    0x0E
-#define ADDRESS_WRITE_GPIO__0__7    0x0F
+#define ADDRESS_WRITE_GPIO_56_63    0x10
+#define ADDRESS_WRITE_GPIO_48_55    0x11
+#define ADDRESS_WRITE_GPIO_40_47    0x12
+#define ADDRESS_WRITE_GPIO_32_39    0x13
+#define ADDRESS_WRITE_GPIO_24_31    0x14
+#define ADDRESS_WRITE_GPIO_16_23    0x15
+#define ADDRESS_WRITE_GPIO__8_15    0x16
+#define ADDRESS_WRITE_GPIO__0__7    0x17
 //A4:1 A3:0 A2..A0:0..7
-#define ADDRESS_OUTPUT_GPIO_56_63   0x10
-#define ADDRESS_OUTPUT_GPIO_48_55   0x11
-#define ADDRESS_OUTPUT_GPIO_40_47   0x12
-#define ADDRESS_OUTPUT_GPIO_32_39   0x13
-#define ADDRESS_OUTPUT_GPIO_24_31   0x14
-#define ADDRESS_OUTPUT_GPIO_16_23   0x15
-#define ADDRESS_OUTPUT_GPIO__8_15   0x16
-#define ADDRESS_OUTPUT_GPIO__0__7   0x17
+#define ADDRESS_OUTPUT_GPIO_56_63   0x18
+#define ADDRESS_OUTPUT_GPIO_48_55   0x19
+#define ADDRESS_OUTPUT_GPIO_40_47   0x1A
+#define ADDRESS_OUTPUT_GPIO_32_39   0x1B
+#define ADDRESS_OUTPUT_GPIO_24_31   0x1C
+#define ADDRESS_OUTPUT_GPIO_16_23   0x1D
+#define ADDRESS_OUTPUT_GPIO__8_15   0x1E
+#define ADDRESS_OUTPUT_GPIO__0__7   0x1F
 
 
 void blink_led(int iMicrosecondDelay)
@@ -373,6 +383,15 @@ int main()
     gpio_set_dir(25, GPIO_OUT);
     gpio_put(25, true);
 
+    gpio_init(PWR_12V);
+    gpio_init(PWR_5V_A);
+    gpio_init(PWR_5V_B);
+    gpio_init(PWR_5V_C);
+    gpio_init(PWR_GND_A);
+    gpio_init(PWR_GND_B);
+    gpio_init(PWR_GND_C);
+    gpio_init(PWR_GND_D);
+
     gpio_init(ENABLE_GPIO);
     gpio_init(DATA_LINE_0);
     gpio_init(DATA_LINE_1);
@@ -388,10 +407,20 @@ int main()
     gpio_init(ADDR_LINE_2);
     gpio_init(ADDR_LINE_3);
     gpio_init(ADDR_LINE_4);
+    gpio_init(ADDR_LINE_5);
     gpio_init(READ_IN);
     gpio_init(WRITE_OUT);
 
     gpio_put_all(0);
+    gpio_set_dir(PWR_12V, GPIO_OUT);
+    gpio_set_dir(PWR_5V_A, GPIO_OUT);    
+    gpio_set_dir(PWR_5V_B, GPIO_OUT);
+    gpio_set_dir(PWR_5V_C, GPIO_OUT);    
+    gpio_set_dir(PWR_GND_A, GPIO_OUT);
+    gpio_set_dir(PWR_GND_B, GPIO_OUT);    
+    gpio_set_dir(PWR_GND_C, GPIO_OUT);
+    gpio_set_dir(PWR_GND_D, GPIO_OUT);    
+
     gpio_set_dir(ENABLE_GPIO, GPIO_OUT);
     gpio_set_dir(ADDR_LINE_ENABLE, GPIO_OUT);
     gpio_set_dir(ADDR_LINE_0, GPIO_OUT);
@@ -408,8 +437,8 @@ int main()
 
     gpio_put(25, false);
 
-    test_read(true);
-    //test_write();
+    //test_read(true);
+    test_write();
 
     blink_led(100000);
     return 0;
