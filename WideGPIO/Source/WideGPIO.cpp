@@ -14,7 +14,7 @@
 #define PWR_5V_A                1
 #define PWR_5V_B                2
 #define PWR_5V_C                3
-#define PWR_GND_A               4  
+#define PWR_GND_A               4
 #define PWR_GND_B               5
 #define PWR_GND_C               6
 #define PWR_GND_D               7
