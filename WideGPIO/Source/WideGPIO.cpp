@@ -40,7 +40,7 @@ int aiData_0_7[] =  { DATA_LINE_7, DATA_LINE_6, DATA_LINE_5, DATA_LINE_4, DATA_L
 #define ADDR_LINE_4             13
 #define ADDR_LINE_5             14
 
-int aiAddress_0_4[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR_LINE_4 };
+int aiAddress_0_5[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR_LINE_4, ADDR_LINE_5 };
 
 
 #define READ_IN                 15
@@ -48,32 +48,32 @@ int aiAddress_0_4[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR
 
 //Addresses
 //A4:0 A3:0 A2..A0:0..7
-#define ADDRESS_READ_GPIO_56_63     0x00
-#define ADDRESS_READ_GPIO_48_55     0x01
-#define ADDRESS_READ_GPIO_40_47     0x02
-#define ADDRESS_READ_GPIO_32_39     0x03
-#define ADDRESS_READ_GPIO_24_31     0x04
-#define ADDRESS_READ_GPIO_16_23     0x05
-#define ADDRESS_READ_GPIO__8_15     0x06
-#define ADDRESS_READ_GPIO__0__7     0x07
+#define ADDRESS_READ_GPIO_56_63     0x10
+#define ADDRESS_READ_GPIO_48_55     0x11
+#define ADDRESS_READ_GPIO_40_47     0x12
+#define ADDRESS_READ_GPIO_32_39     0x13
+#define ADDRESS_READ_GPIO_24_31     0x14
+#define ADDRESS_READ_GPIO_16_23     0x15
+#define ADDRESS_READ_GPIO__8_15     0x16
+#define ADDRESS_READ_GPIO__0__7     0x17
 //A4:0 A3:1 A2..A0:0..7
-#define ADDRESS_WRITE_GPIO_56_63    0x10
-#define ADDRESS_WRITE_GPIO_48_55    0x11
-#define ADDRESS_WRITE_GPIO_40_47    0x12
-#define ADDRESS_WRITE_GPIO_32_39    0x13
-#define ADDRESS_WRITE_GPIO_24_31    0x14
-#define ADDRESS_WRITE_GPIO_16_23    0x15
-#define ADDRESS_WRITE_GPIO__8_15    0x16
-#define ADDRESS_WRITE_GPIO__0__7    0x17
+#define ADDRESS_WRITE_GPIO_56_63    0x00
+#define ADDRESS_WRITE_GPIO_48_55    0x01
+#define ADDRESS_WRITE_GPIO_40_47    0x02
+#define ADDRESS_WRITE_GPIO_32_39    0x03
+#define ADDRESS_WRITE_GPIO_24_31    0x04
+#define ADDRESS_WRITE_GPIO_16_23    0x05
+#define ADDRESS_WRITE_GPIO__8_15    0x06
+#define ADDRESS_WRITE_GPIO__0__7    0x07
 //A4:1 A3:0 A2..A0:0..7
-#define ADDRESS_OUTPUT_GPIO_56_63   0x18
-#define ADDRESS_OUTPUT_GPIO_48_55   0x19
-#define ADDRESS_OUTPUT_GPIO_40_47   0x1A
-#define ADDRESS_OUTPUT_GPIO_32_39   0x1B
-#define ADDRESS_OUTPUT_GPIO_24_31   0x1C
-#define ADDRESS_OUTPUT_GPIO_16_23   0x1D
-#define ADDRESS_OUTPUT_GPIO__8_15   0x1E
-#define ADDRESS_OUTPUT_GPIO__0__7   0x1F
+#define ADDRESS_OUTPUT_GPIO_56_63   0x08
+#define ADDRESS_OUTPUT_GPIO_48_55   0x09
+#define ADDRESS_OUTPUT_GPIO_40_47   0x0A
+#define ADDRESS_OUTPUT_GPIO_32_39   0x0B
+#define ADDRESS_OUTPUT_GPIO_24_31   0x0C
+#define ADDRESS_OUTPUT_GPIO_16_23   0x0D
+#define ADDRESS_OUTPUT_GPIO__8_15   0x0E
+#define ADDRESS_OUTPUT_GPIO__0__7   0x0F
 
 
 void blink_led(int iMicrosecondDelay)
@@ -129,11 +129,11 @@ void set_data_output()
 
 uint32_t make_address(uint32_t uiAddress, bool bEnable)
 {
-    uint32_t uiAddressOnPins = ( uiAddress & 0x01 ? (1ul << aiAddress_0_4[0]) : 0) | 
-                                (uiAddress & 0x02 ? (1ul << aiAddress_0_4[1]) : 0) | 
-                                (uiAddress & 0x04 ? (1ul << aiAddress_0_4[2]) : 0) | 
-                                (uiAddress & 0x08 ? (1ul << aiAddress_0_4[3]) : 0) | 
-                                (uiAddress & 0x10 ? (1ul << aiAddress_0_4[4]) : 0) |
+    uint32_t uiAddressOnPins = ( uiAddress & 0x01 ? (1ul << aiAddress_0_5[0]) : 0) | 
+                                (uiAddress & 0x02 ? (1ul << aiAddress_0_5[1]) : 0) | 
+                                (uiAddress & 0x04 ? (1ul << aiAddress_0_5[2]) : 0) | 
+                                (uiAddress & 0x08 ? (1ul << aiAddress_0_5[3]) : 0) | 
+                                (uiAddress & 0x10 ? (1ul << aiAddress_0_5[4]) : 0) |
                                 (bEnable ? (1ul << ADDR_LINE_ENABLE) : 0);
     return uiAddressOnPins;
 }
@@ -152,14 +152,16 @@ uint guiWriteDataMask = (   1 << DATA_LINE_0 |
                             1 << ADDR_LINE_1 |
                             1 << ADDR_LINE_2 |
                             1 << ADDR_LINE_3 |
-                            1 << ADDR_LINE_4 );
+                            1 << ADDR_LINE_4 |
+                            1 << ADDR_LINE_5);
 
 uint guiReadDataMask = (1 << ADDR_LINE_ENABLE |
                         1 << ADDR_LINE_0 |
                         1 << ADDR_LINE_1 |
                         1 << ADDR_LINE_2 |
                         1 << ADDR_LINE_3 |
-                        1 << ADDR_LINE_4 );
+                        1 << ADDR_LINE_4 |
+                        1 << ADDR_LINE_5);
 
 
 void write_data(uint32_t uiAddress, uint32_t uiData)
@@ -376,6 +378,35 @@ void test_write(void)
 }
 
 
+void blink_ping(uint gpio)
+{
+    gpio_put(gpio, true);
+    sleep_ms(250);
+    gpio_put(gpio, false);
+}
+
+
+void enable_power(void)
+{
+    blink_ping(PWR_GND_A);
+    blink_ping(PWR_GND_B);
+    blink_ping(PWR_GND_C);
+    blink_ping(PWR_GND_D);
+    blink_ping(PWR_5V_A);
+    blink_ping(PWR_5V_B);
+    blink_ping(PWR_5V_C);
+    blink_ping(PWR_12V);
+
+    gpio_put(PWR_GND_A, true);
+    gpio_put(PWR_GND_B, true);
+    gpio_put(PWR_GND_C, true);
+    gpio_put(PWR_GND_D, true);
+    gpio_put(PWR_5V_A, true);
+    gpio_put(PWR_5V_B, true);
+    gpio_put(PWR_5V_C, true);
+}
+
+
 int main() 
 {
     stdio_init_all();
@@ -428,6 +459,7 @@ int main()
     gpio_set_dir(ADDR_LINE_2, GPIO_OUT);
     gpio_set_dir(ADDR_LINE_3, GPIO_OUT);
     gpio_set_dir(ADDR_LINE_4, GPIO_OUT);
+    gpio_set_dir(ADDR_LINE_5, GPIO_OUT);
     gpio_set_dir(READ_IN, GPIO_OUT);
     gpio_set_dir(WRITE_OUT, GPIO_OUT);
 
@@ -436,6 +468,8 @@ int main()
     gpio_put(ENABLE_GPIO, false);
 
     gpio_put(25, false);
+
+    enable_power();
 
     //test_read(true);
     test_write();
