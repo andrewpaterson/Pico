@@ -7,6 +7,7 @@
 #include "hardware/irq.h"
 #include "hardware/gpio.h"
 #include "GeneralPins.h"
+#include "StringHelper.h"
 
 
 #define ENABLE_GPIO             28
@@ -75,6 +76,8 @@ int aiAddress_0_5[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR
 #define ADDRESS_OUTPUT_GPIO_16_23   0x1D
 #define ADDRESS_OUTPUT_GPIO__8_15   0x1E
 #define ADDRESS_OUTPUT_GPIO__0__7   0x1F
+
+#define INPUT_BUFFER_SIZE   256
 
 
 void BlinkLed(int iMicrosecondDelay)
@@ -249,7 +252,7 @@ uint32_t ReadData(uint32_t uiAddress)
 }
 
 
-void SetAllDataToOutput(unsigned char uiValue)
+void SetAllToOutput(unsigned char uiValue)
 {
     for (int j = ADDRESS_OUTPUT_GPIO_56_63; j <= ADDRESS_OUTPUT_GPIO__0__7; j++)
     {
@@ -258,7 +261,7 @@ void SetAllDataToOutput(unsigned char uiValue)
 }
 
 
-void SetValueOnAllData(unsigned char uiValue)
+void SetAllToData(unsigned char uiValue)
 {
     for (int j = ADDRESS_WRITE_GPIO_56_63; j <= ADDRESS_WRITE_GPIO__0__7; j++)
     {
@@ -288,7 +291,7 @@ void TestRead(bool bReadLeft)
     uint32_t    uiWrite2 = bReadLeft ? ADDRESS_WRITE_GPIO_48_55 : ADDRESS_WRITE_GPIO_16_23;
     uint32_t    uiWrite3 = bReadLeft ? ADDRESS_WRITE_GPIO_56_63 : ADDRESS_WRITE_GPIO_24_31;
 
-    SetValueOnAllData(0x00);
+    SetAllToData(0x00);
 
     WriteData(uiNoOutput0, 0x00);
     WriteData(uiNoOutput1, 0x00);
@@ -324,13 +327,13 @@ void TestWrite(void)
 {
     for (;;)
     {
-        SetAllDataToOutput(0xff);
+        SetAllToOutput(0xff);
         PulseWriteData();
         for (int i = 0; i < 64; i++)
         {
             int iDataOffset;
             int iAddress;
-            SetValueOnAllData(0x00);
+            SetAllToData(0x00);
 
             iAddress = i / 8;
             iDataOffset = 1 << (7 - (i % 8));
@@ -339,14 +342,14 @@ void TestWrite(void)
             sleep_ms(40);
         }
 
-        SetValueOnAllData(0xff);
-        SetAllDataToOutput(0x00);
+        SetAllToData(0xff);
+        SetAllToOutput(0x00);
         PulseWriteData();
         for (int i = 63; i >= 0; i--)
         {
             int iDataOffset;
             int iAddress;
-            SetAllDataToOutput(0x00);
+            SetAllToOutput(0x00);
 
             iAddress = i / 8;
             iDataOffset = 1 << (7 - (i % 8));
@@ -423,6 +426,80 @@ void InitPicoPins(void)
 }
 
 
+void ExecuteCommand(char* pszCommand, int uiLength)
+{
+    //* X - Use ASCII hex
+    //* XX - Use 8bit bytes
+    //Wx..x - Write data bits e.g. Dff00ff00ff00ff00ff00ff00ff00ff00 writes 1s to bits 127 to 120 then 0s to bits 119 to 112 etc... 
+    //                            Dff writes 1s to bits 7 to 0.
+    //* W_ox..x - Write data bits with byte offset e.g. D_1ff00 writes 1s to bits 23 to 16 then 0s to bits 15 to 8.
+    //                                               D_0f writes 1s to bits 3 to 0 (same as Df)
+    //W - Write all data bits with 0.
+    //Ox..x - Set GPIO as outputs from bits e.g. Off00ff00ff00ff00ff00ff00ff00ff00 sets bits 127 to 120 to outputs then sets bits 119 to 112 to inputs etc... 
+    //O_ox..x - same as Wo_xxx but sets outputs.
+    //O - Set all GPIO as inputs
+    //Ro_p - Latch ALL input bits.  Return values from byte o to byte p inclusive.  GPIO set as output are also returned and should be masked off.
+    //       e.g. R0_7 return all 128 bits of GPIO
+    //Ro - Same as Ro_p but for a single byte.
+    //R - Latch ALL input bits.  Return all values from byte 0 to 15 inclusive.
+    
+    //Note: you should call W before calling O to ensure the correct values are present when the GPIO is set to output.
+    //Note: the first byte returned is the high byte.  The first nybble returned is the high nybble.
+    //Note: Offsets o and p are always ASCII hex even if mode is XX
+    
+    if (uiLength == 0)
+    {
+
+    }
+    else if (uiLength == 1)
+    {
+        if (pszCommand[0] == 'X')
+        {
+
+        }
+        else if (pszCommand[0] == 'W')
+        {
+
+        }
+        else if (pszCommand[0] == 'O')
+        {
+
+        }
+        else if (pszCommand[0] == 'R')
+        {
+
+        }
+    }
+    else
+    {
+        if (MemCmp("XX", 2, pszCommand, uiLength) == 0)
+        {
+
+        }
+        else if (MemCmp("W_", 2, pszCommand, 2) == 0)
+        {
+
+        }
+        else if (MemCmp("O_", 2, pszCommand, 2) == 0)
+        {
+
+        }
+        else if (pszCommand[0] == 'W')
+        {
+
+        }
+        else if (pszCommand[0] == 'O')
+        {
+
+        }
+        else if (pszCommand[0] == 'R')
+        {
+
+        }
+    }
+}
+
+
 int main(void)
 {
     InitPicoPins();
@@ -432,6 +509,12 @@ int main(void)
     gpio_put(ENABLE_GPIO, false);
 
     gpio_put(ONBOARD_LED, true);
+
+    char szInput[INPUT_BUFFER_SIZE];
+    int  uiInputIndex;
+
+    memset(szInput, 0, INPUT_BUFFER_SIZE);
+    uiInputIndex = 0;
 
     stdio_usb_init();
     while (!tusb_inited()) {
@@ -443,12 +526,18 @@ int main(void)
     while (1) {
         // Read incoming character from USB serial
         int c = getchar_timeout_us(0); // Timeout after 10ms
-        if (c != PICO_ERROR_TIMEOUT) {
-            // Echo the character back
-            putchar(c);
-            // If the character is a newline, add carriage return for compatibility
-            if (c == '\n') {
-                putchar('\r');
+        if (c != PICO_ERROR_TIMEOUT) 
+        {
+            if (c == '\n') 
+            {
+                szInput[uiInputIndex] = '\0';
+                ExecuteCommand(szInput, uiInputIndex);
+                uiInputIndex = 0;
+            }
+            else
+            {
+                szInput[uiInputIndex] = c;
+                uiInputIndex++;
             }
         }
         if (x == 1000000)

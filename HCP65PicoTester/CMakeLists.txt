@@ -9,7 +9,10 @@ pico_sdk_init()
 add_executable(hcp65_pico_tester)
 target_sources(hcp65_pico_tester PRIVATE 
                 Source/HCP65PicoTester.cpp
-                Source/GeneralPins.cpp)
+                Source/GeneralPins.cpp
+                Source/PointerFunctions.cpp
+                Source/StringHelper.cpp)
+
 
 target_link_libraries(hcp65_pico_tester
     pico_stdlib)
