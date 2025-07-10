@@ -7,15 +7,19 @@ set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
 add_executable(hcp65_pico_tester)
-target_sources(hcp65_pico_tester PRIVATE 
+target_sources( hcp65_pico_tester PRIVATE 
                 Source/HCP65PicoTester.cpp
                 Source/GeneralPins.cpp
                 Source/PointerFunctions.cpp
-                Source/StringHelper.cpp)
+                Source/StringHelper.cpp
+                Source/TesterPins.cpp
+                Source/TesterState.cpp
+                Source/TestFunctions.cpp
+                Source/Commands.cpp)
 
 
 target_link_libraries(hcp65_pico_tester
-    pico_stdlib)
+                      pico_stdlib)
 
 target_include_directories(hcp65_pico_tester PRIVATE
   Source/
