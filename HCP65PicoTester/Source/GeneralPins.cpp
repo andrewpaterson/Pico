@@ -1,9 +1,9 @@
 #include "GeneralPins.h"
 
 
-uint32_t make_8bit_mask(int* paiPins, uint32_t iValue)
+uint32 make_8bit_mask(uint32* paiPins, uint32 iValue)
 {
-    uint32_t iDataMask = (iValue & 0x01 ? (1ul << paiPins[0]) : 0) | 
+    uint32 iDataMask = (iValue & 0x01 ? (1ul << paiPins[0]) : 0) | 
                          (iValue & 0x02 ? (1ul << paiPins[1]) : 0) | 
                          (iValue & 0x04 ? (1ul << paiPins[2]) : 0) | 
                          (iValue & 0x08 ? (1ul << paiPins[3]) : 0) | 
@@ -15,9 +15,9 @@ uint32_t make_8bit_mask(int* paiPins, uint32_t iValue)
 }
 
 
-uint32_t make_4bit_mask(int* paiPins, uint32_t iValue)
+uint32 make_4bit_mask(uint32* paiPins, uint32 iValue)
 {
-    uint32_t iDataMask = (iValue & 0x01 ? (1ul << paiPins[0]) : 0) | 
+    uint32 iDataMask = (iValue & 0x01 ? (1ul << paiPins[0]) : 0) | 
                          (iValue & 0x02 ? (1ul << paiPins[1]) : 0) | 
                          (iValue & 0x04 ? (1ul << paiPins[2]) : 0) | 
                          (iValue & 0x08 ? (1ul << paiPins[3]) : 0);

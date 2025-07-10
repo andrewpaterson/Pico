@@ -7,6 +7,7 @@
 #include "hardware/irq.h"
 #include "hardware/gpio.h"
 #include "GeneralPins.h"
+#include "PrimitiveTypes.h"
 #include "StringHelper.h"
 
 
@@ -31,8 +32,8 @@
 #define DATA_LINE_6             26
 #define DATA_LINE_7             27
 
-int aiData_8_15[] = { DATA_LINE_7, DATA_LINE_6, DATA_LINE_5, DATA_LINE_4, DATA_LINE_3, DATA_LINE_2, DATA_LINE_1, DATA_LINE_0 };
-int aiData_0_7[] =  { DATA_LINE_7, DATA_LINE_6, DATA_LINE_5, DATA_LINE_4, DATA_LINE_3, DATA_LINE_2, DATA_LINE_1, DATA_LINE_0 };
+uint32 aiData_8_15[] = { DATA_LINE_7, DATA_LINE_6, DATA_LINE_5, DATA_LINE_4, DATA_LINE_3, DATA_LINE_2, DATA_LINE_1, DATA_LINE_0 };
+uint32 aiData_0_7[] =  { DATA_LINE_7, DATA_LINE_6, DATA_LINE_5, DATA_LINE_4, DATA_LINE_3, DATA_LINE_2, DATA_LINE_1, DATA_LINE_0 };
 
 
 #define ADDR_LINE_ENABLE        8
@@ -43,7 +44,7 @@ int aiData_0_7[] =  { DATA_LINE_7, DATA_LINE_6, DATA_LINE_5, DATA_LINE_4, DATA_L
 #define ADDR_LINE_4             13  // 10  (high - write, low - read)
 #define ADDR_LINE_5             14  // 20
 
-int aiAddress_0_5[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR_LINE_4, ADDR_LINE_5 };
+uint32 aiAddress_0_5[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR_LINE_4, ADDR_LINE_5 };
 
 
 #define READ_IN                 15
@@ -80,7 +81,7 @@ int aiAddress_0_5[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR
 #define INPUT_BUFFER_SIZE   256
 
 
-void BlinkLed(int iMicrosecondDelay)
+void BlinkLed(uint32 iMicrosecondDelay)
 {
     bool bLed = true;
 
@@ -131,9 +132,9 @@ void SetDataToOutput()
 }
 
 
-uint32_t MakeAddress(uint32_t uiAddress, bool bEnable)
+uint32 MakeAddress(uint32 uiAddress, bool bEnable)
 {
-    uint32_t uiAddressOnPins = ( uiAddress & 0x01 ? (1ul << aiAddress_0_5[0]) : 0) | 
+    uint32 uiAddressOnPins = ( uiAddress & 0x01 ? (1ul << aiAddress_0_5[0]) : 0) | 
                                 (uiAddress & 0x02 ? (1ul << aiAddress_0_5[1]) : 0) | 
                                 (uiAddress & 0x04 ? (1ul << aiAddress_0_5[2]) : 0) | 
                                 (uiAddress & 0x08 ? (1ul << aiAddress_0_5[3]) : 0) | 
@@ -143,7 +144,7 @@ uint32_t MakeAddress(uint32_t uiAddress, bool bEnable)
 }
 
 
-uint guiWriteDataMask = (   1 << DATA_LINE_0 | 
+uint32 guiWriteDataMask = (   1 << DATA_LINE_0 | 
                             1 << DATA_LINE_1 |
                             1 << DATA_LINE_2 |
                             1 << DATA_LINE_3 |
@@ -159,7 +160,7 @@ uint guiWriteDataMask = (   1 << DATA_LINE_0 |
                             1 << ADDR_LINE_4 |
                             1 << ADDR_LINE_5);
 
-uint guiReadDataMask = (1 << ADDR_LINE_ENABLE |
+uint32 guiReadDataMask = (1 << ADDR_LINE_ENABLE |
                         1 << ADDR_LINE_0 |
                         1 << ADDR_LINE_1 |
                         1 << ADDR_LINE_2 |
@@ -168,10 +169,10 @@ uint guiReadDataMask = (1 << ADDR_LINE_ENABLE |
                         1 << ADDR_LINE_5);
 
 
-void WriteData(uint32_t uiAddress, uint32_t uiData)
+void WriteData(uint32 uiAddress, uint32 uiData)
 {
-    uint32_t    uiDataOnPins;
-    uint32_t    uiAddressOnPins;
+    uint32    uiDataOnPins;
+    uint32    uiAddressOnPins;
 
     if (uiAddress & 1 == 1)
     {
@@ -205,17 +206,17 @@ void PulseReadData(void)
 }
 
 
-uint32_t ReadData(uint32_t uiAddress)
+uint32 ReadData(uint32 uiAddress)
 {
-    uint32_t    uiDataOnPins;
-    uint32_t    uiAddressOnPins;
-    uint32_t    uiValue;
+    uint32    uiDataOnPins;
+    uint32    uiAddressOnPins;
+    uint32    uiValue;
 
     SetDataToInput();
 
     uiAddressOnPins = MakeAddress(uiAddress, true);
     gpio_put_masked(guiReadDataMask, uiAddressOnPins);
-    for (int i = 0; i < 1; i++)
+    for (size i = 0; i < 1; i++)
     {
         asm volatile("nop");
     }
@@ -254,7 +255,7 @@ uint32_t ReadData(uint32_t uiAddress)
 
 void SetAllToOutput(unsigned char uiValue)
 {
-    for (int j = ADDRESS_OUTPUT_GPIO_56_63; j <= ADDRESS_OUTPUT_GPIO__0__7; j++)
+    for (size j = ADDRESS_OUTPUT_GPIO_56_63; j <= ADDRESS_OUTPUT_GPIO__0__7; j++)
     {
         WriteData(j, uiValue);
     }
@@ -263,7 +264,7 @@ void SetAllToOutput(unsigned char uiValue)
 
 void SetAllToData(unsigned char uiValue)
 {
-    for (int j = ADDRESS_WRITE_GPIO_56_63; j <= ADDRESS_WRITE_GPIO__0__7; j++)
+    for (size j = ADDRESS_WRITE_GPIO_56_63; j <= ADDRESS_WRITE_GPIO__0__7; j++)
     {
         WriteData(j, uiValue);
     }
@@ -272,24 +273,24 @@ void SetAllToData(unsigned char uiValue)
 
 void TestRead(bool bReadLeft)
 {
-    uint32_t    uiNoOutput0 = bReadLeft ? ADDRESS_OUTPUT_GPIO__0__7 : ADDRESS_OUTPUT_GPIO_32_39;
-    uint32_t    uiNoOutput1 = bReadLeft ? ADDRESS_OUTPUT_GPIO__8_15 : ADDRESS_OUTPUT_GPIO_40_47;
-    uint32_t    uiNoOutput2 = bReadLeft ? ADDRESS_OUTPUT_GPIO_16_23 : ADDRESS_OUTPUT_GPIO_48_55;
-    uint32_t    uiNoOutput3 = bReadLeft ? ADDRESS_OUTPUT_GPIO_24_31 : ADDRESS_OUTPUT_GPIO_56_63;
-    uint32_t    uiOutput0 = bReadLeft ? ADDRESS_OUTPUT_GPIO_32_39 : ADDRESS_OUTPUT_GPIO__0__7;
-    uint32_t    uiOutput1 = bReadLeft ? ADDRESS_OUTPUT_GPIO_40_47 : ADDRESS_OUTPUT_GPIO__8_15;
-    uint32_t    uiOutput2 = bReadLeft ? ADDRESS_OUTPUT_GPIO_48_55 : ADDRESS_OUTPUT_GPIO_16_23;
-    uint32_t    uiOutput3 = bReadLeft ? ADDRESS_OUTPUT_GPIO_56_63 : ADDRESS_OUTPUT_GPIO_24_31;
+    uint32    uiNoOutput0 = bReadLeft ? ADDRESS_OUTPUT_GPIO__0__7 : ADDRESS_OUTPUT_GPIO_32_39;
+    uint32    uiNoOutput1 = bReadLeft ? ADDRESS_OUTPUT_GPIO__8_15 : ADDRESS_OUTPUT_GPIO_40_47;
+    uint32    uiNoOutput2 = bReadLeft ? ADDRESS_OUTPUT_GPIO_16_23 : ADDRESS_OUTPUT_GPIO_48_55;
+    uint32    uiNoOutput3 = bReadLeft ? ADDRESS_OUTPUT_GPIO_24_31 : ADDRESS_OUTPUT_GPIO_56_63;
+    uint32    uiOutput0 = bReadLeft ? ADDRESS_OUTPUT_GPIO_32_39 : ADDRESS_OUTPUT_GPIO__0__7;
+    uint32    uiOutput1 = bReadLeft ? ADDRESS_OUTPUT_GPIO_40_47 : ADDRESS_OUTPUT_GPIO__8_15;
+    uint32    uiOutput2 = bReadLeft ? ADDRESS_OUTPUT_GPIO_48_55 : ADDRESS_OUTPUT_GPIO_16_23;
+    uint32    uiOutput3 = bReadLeft ? ADDRESS_OUTPUT_GPIO_56_63 : ADDRESS_OUTPUT_GPIO_24_31;
 
-    uint32_t    uiRead0 = bReadLeft ? ADDRESS_READ_GPIO__0__7 : ADDRESS_READ_GPIO_32_39;
-    uint32_t    uiRead1 = bReadLeft ? ADDRESS_READ_GPIO__8_15 : ADDRESS_READ_GPIO_40_47;
-    uint32_t    uiRead2 = bReadLeft ? ADDRESS_READ_GPIO_16_23 : ADDRESS_READ_GPIO_48_55;
-    uint32_t    uiRead3 = bReadLeft ? ADDRESS_READ_GPIO_24_31 : ADDRESS_READ_GPIO_56_63;
+    uint32    uiRead0 = bReadLeft ? ADDRESS_READ_GPIO__0__7 : ADDRESS_READ_GPIO_32_39;
+    uint32    uiRead1 = bReadLeft ? ADDRESS_READ_GPIO__8_15 : ADDRESS_READ_GPIO_40_47;
+    uint32    uiRead2 = bReadLeft ? ADDRESS_READ_GPIO_16_23 : ADDRESS_READ_GPIO_48_55;
+    uint32    uiRead3 = bReadLeft ? ADDRESS_READ_GPIO_24_31 : ADDRESS_READ_GPIO_56_63;
 
-    uint32_t    uiWrite0 = bReadLeft ? ADDRESS_WRITE_GPIO_32_39 : ADDRESS_WRITE_GPIO__0__7;
-    uint32_t    uiWrite1 = bReadLeft ? ADDRESS_WRITE_GPIO_40_47 : ADDRESS_WRITE_GPIO__8_15;
-    uint32_t    uiWrite2 = bReadLeft ? ADDRESS_WRITE_GPIO_48_55 : ADDRESS_WRITE_GPIO_16_23;
-    uint32_t    uiWrite3 = bReadLeft ? ADDRESS_WRITE_GPIO_56_63 : ADDRESS_WRITE_GPIO_24_31;
+    uint32    uiWrite0 = bReadLeft ? ADDRESS_WRITE_GPIO_32_39 : ADDRESS_WRITE_GPIO__0__7;
+    uint32    uiWrite1 = bReadLeft ? ADDRESS_WRITE_GPIO_40_47 : ADDRESS_WRITE_GPIO__8_15;
+    uint32    uiWrite2 = bReadLeft ? ADDRESS_WRITE_GPIO_48_55 : ADDRESS_WRITE_GPIO_16_23;
+    uint32    uiWrite3 = bReadLeft ? ADDRESS_WRITE_GPIO_56_63 : ADDRESS_WRITE_GPIO_24_31;
 
     SetAllToData(0x00);
 
@@ -303,7 +304,7 @@ void TestRead(bool bReadLeft)
     WriteData(uiOutput3, 0xff);
     PulseWriteData();
 
-    uint32_t    uiValue;
+    uint32    uiValue;
     for (;;)
     {
         PulseReadData();
@@ -329,10 +330,10 @@ void TestWrite(void)
     {
         SetAllToOutput(0xff);
         PulseWriteData();
-        for (int i = 0; i < 64; i++)
+        for (size i = 0; i < 64; i++)
         {
-            int iDataOffset;
-            int iAddress;
+            uint32 iDataOffset;
+            uint32 iAddress;
             SetAllToData(0x00);
 
             iAddress = i / 8;
@@ -345,10 +346,10 @@ void TestWrite(void)
         SetAllToData(0xff);
         SetAllToOutput(0x00);
         PulseWriteData();
-        for (int i = 63; i >= 0; i--)
+        for (size i = 63; i >= 0; i--)
         {
-            int iDataOffset;
-            int iAddress;
+            uint32 iDataOffset;
+            uint32 iAddress;
             SetAllToOutput(0x00);
 
             iAddress = i / 8;
@@ -426,7 +427,7 @@ void InitPicoPins(void)
 }
 
 
-void ExecuteCommand(char* pszCommand, int uiLength)
+void ExecuteCommand(char* pszCommand, size uiLength)
 {
     //* X - Use ASCII hex
     //* XX - Use 8bit bytes
@@ -511,7 +512,7 @@ int main(void)
     gpio_put(ONBOARD_LED, true);
 
     char szInput[INPUT_BUFFER_SIZE];
-    int  uiInputIndex;
+    size  uiInputIndex;
 
     memset(szInput, 0, INPUT_BUFFER_SIZE);
     uiInputIndex = 0;
@@ -522,10 +523,10 @@ int main(void)
     }
 
     // Main loop
-    int x = 0;
+    size x = 0;
     while (1) {
         // Read incoming character from USB serial
-        int c = getchar_timeout_us(0); // Timeout after 10ms
+        int32 c = getchar_timeout_us(0); // Timeout after 10ms
         if (c != PICO_ERROR_TIMEOUT) 
         {
             if (c == '\n') 
