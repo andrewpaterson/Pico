@@ -23,6 +23,23 @@ size HexValue(char c)
 }
 
 
+char HexChar(uint8 uiValue)
+{
+    if (uiValue <= 9)
+    {
+        return '0' + uiValue;
+    }
+    else if (uiValue <= 0xf)
+    {
+        return 'A' + uiValue - 10;
+    }
+    else
+    {
+        return '\0';
+    }
+}
+
+
 size HexData(uint8* puiData, char* szCommand, size uiLength)
 {
     size    ui;
@@ -49,7 +66,7 @@ size HexData(uint8* puiData, char* szCommand, size uiLength)
             return SIZE_MAX;
         }
         
-        if ((uiSourceIndex & 1) == 1)
+        if ((ui & 1) == 1)
         {
             puiData[uiDestIndex] |= (uint8)(uiValue << 4);
             uiDestIndex++;
@@ -60,11 +77,10 @@ size HexData(uint8* puiData, char* szCommand, size uiLength)
         }
     }
 
-    if ((uiSourceIndex & 1) == 0)
+    if (ui & 1 == 1)
     {
-        uiDestIndex++;
+         uiDestIndex++;
     }
-
     return uiDestIndex;
 }
 
@@ -124,13 +140,26 @@ void SetOffsetData(char* szCommand, size uiLength)
 
 void SetData(char* szCommand, size uiLength)
 {
-    
+    size    uiBytes;
+    size    ui;
+    uint8   auiData[16];
+
+    uiBytes = HexData(auiData, &szCommand[0], uiLength);
+    if (uiBytes != SIZE_MAX)
+    {
+        for (ui = 0; ui< uiBytes; ui++)
+        {
+            WriteData(ADDRESS_WRITE_GPIO__0__7 - ui, auiData[ui]);
+        }
+        PulseWriteData();
+    }
 }
 
 
 void SetAllOutputsToInput(void)
 {
-
+    SetAllToOutput(0);
+    PulseWriteData();
 }
 
 
@@ -155,7 +184,19 @@ void SetOffsetOutputs(char* szCommand, size uiLength)
 
 void SetOutputs(char* szCommand, size uiLength)
 {
-    
+    size    uiBytes;
+    size    ui;
+    uint8   auiData[16];
+
+    uiBytes = HexData(auiData, &szCommand[0], uiLength);
+    if (uiBytes != SIZE_MAX)
+    {
+        for (ui = 0; ui< uiBytes; ui++)
+        {
+            WriteData(ADDRESS_OUTPUT_GPIO__0__7 - ui, auiData[ui]);
+        }
+        PulseWriteData();
+    }
 }
 
 

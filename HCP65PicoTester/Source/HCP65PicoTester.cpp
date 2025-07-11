@@ -51,9 +51,27 @@ int main(void)
 
     ExecuteCommand("W");
     ExecuteCommand("O");
-    ExecuteCommand("W_0F");
-    ExecuteCommand("O_0F");
-    return 1;
+    ExecuteCommand("OFFFFFFFFFFFFFFFF");
+
+    char    szCommand[100];
+    size    i;
+    uint8   uiRand;
+
+    for (;;)
+    {
+        szCommand[0]='W';
+        for (i = 0; i < 16; i++)
+        {
+            uiRand = rand() & 0xf;
+            szCommand[1 + i] = HexChar(uiRand);
+        }
+        szCommand[i+1]='\0';
+
+        ExecuteCommand(szCommand);
+        sleep_ms(150);
+    }
+    
+    BlinkLed(100000);
 
     stdio_usb_init();
     while (!tusb_inited())

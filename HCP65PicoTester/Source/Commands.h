@@ -3,6 +3,9 @@
 #include "PrimitiveTypes.h"
 
 
+char HexChar(uint8 uiValue);
+size HexValue(char c);
+
 void    SetAllDataToZero(void);
 void    SetAllOutputToInput(void);
 void    GetAllData(void);
