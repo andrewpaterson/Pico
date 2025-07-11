@@ -3,13 +3,14 @@
 #include "PrimitiveTypes.h"
 
 
-char HexChar(uint8 uiValue);
-size HexValue(char c);
+char    HexChar(uint8 uiValue);
+size    HexValue(char c);
+
+char*   ExecuteCommand(char* pszCommand, size uiLength);
 
 void    SetAllDataToZero(void);
 void    SetAllOutputToInput(void);
 void    GetAllData(void);
-char*   ExecuteCommand(char* pszCommand, size uiLength);
 
 
 #endif // __COMMANDS_H__

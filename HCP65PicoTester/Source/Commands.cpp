@@ -104,7 +104,7 @@ size ParseWithOffset(uint8* puiData, size* puiOffset, char* szCommand, size uiLe
         *puiOffset = HexValue(c);
         if (*puiOffset == SIZE_MAX)
         {
-            strcpy(gszMessage, "Error: Expected ASCII hex offset");
+            strcpy(gszMessage, "Error: Expected offset");
             return SIZE_MAX;
         }
 
@@ -200,15 +200,95 @@ void SetOutputs(char* szCommand, size uiLength)
 }
 
 
+void GetOffsetData(uint8 uiStart, uint8 uiEndInclusive)
+{
+    size    ui;
+    size    uiIndex;
+    uint8   uiAddress;
+    uint8   uiData;
+    char    cHighNybble;
+    char    cLowNybble;
+
+    if (uiEndInclusive < uiStart)
+    {
+        strcpy(gszMessage, "Error: Start must be <= end");
+        return;
+    }
+
+    PulseReadData();
+    gszMessage[0] = 'R';
+    uiIndex = (uiEndInclusive - uiStart) * 2 + 2;
+    for (ui = uiStart; ui <= uiEndInclusive; ui++)
+    {
+        uiAddress = aiReadAddresses[ui];
+        uiData = ReadData(uiAddress);
+        uiData = ReverseByte(uiData);
+        cLowNybble = HexChar(uiData & 0xF);
+        cHighNybble = HexChar(uiData >> 4);
+        gszMessage[uiIndex] = cLowNybble;
+        uiIndex--;
+        gszMessage[uiIndex] = cHighNybble;
+        uiIndex--;
+    }
+    gszMessage[(uiEndInclusive - uiStart) * 2 + 3] = '\0';
+}
+
+
 void GetAllData(void)
 {
-    
+    GetOffsetData(0x0, 0xf);
 }
 
 
 void GetData(char* szCommand, size uiLength)
 {
-    
+    size    uiStart;
+    size    uiEndInclusive;
+    char    c;
+    size    uiBytes;
+    size    ui;
+
+    if (uiLength == 3)
+    {
+        c = szCommand[0];
+        uiStart = HexValue(c);
+        if (uiStart == SIZE_MAX)
+        {
+            strcpy(gszMessage, "Error: Expected start offset");
+            return;
+        }
+        c = szCommand[1];
+        if (c != '_')
+        {
+            strcpy(gszMessage, "Error: Expected underscore");
+            return;
+        }
+        c = szCommand[2];
+        uiEndInclusive = HexValue(c);
+        if (uiEndInclusive == SIZE_MAX)
+        {
+            strcpy(gszMessage, "Error: Expected end offset");
+            return;
+        }
+
+        GetOffsetData(uiStart, uiEndInclusive);
+    }
+    else if (uiLength == 1)
+    {
+        c = szCommand[0];
+        uiStart = HexValue(c);
+        if (uiStart == SIZE_MAX)
+        {
+            strcpy(gszMessage, "Error: Expected start offset");
+            return;
+        }
+
+        GetOffsetData(uiStart, uiStart);
+    }
+    else
+    {
+        strcpy(gszMessage, "Error: Expected offset one or two offsets");
+    }
 }
 
 
@@ -229,7 +309,6 @@ char* ExecuteCommand(char* szCommand, size uiLength)
     
     //Note: you should call W before calling O to ensure the correct values are present when the GPIO is set to output.
     //Note: the first byte returned is the high byte.  The first nybble returned is the high nybble.
-    //Note: Offsets o and p are always ASCII hex even if mode is XX
     
     gszMessage[0] = '\0';
     if (uiLength == 0)

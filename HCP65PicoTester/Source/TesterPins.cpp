@@ -5,6 +5,8 @@ uint8 aiDataPins[] = { DATA_LINE_7, DATA_LINE_6, DATA_LINE_5, DATA_LINE_4, DATA_
 
 uint8 aiAddressPins[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR_LINE_4, ADDR_LINE_5 };
 
+uint8 aiReadAddresses[16] = { ADDRESS_READ_GPIO__0__7, ADDRESS_READ_GPIO__8_15, ADDRESS_READ_GPIO_16_23, ADDRESS_READ_GPIO_24_31, ADDRESS_READ_GPIO_32_39,  ADDRESS_READ_GPIO_40_47,   ADDRESS_READ_GPIO_48_55,   ADDRESS_READ_GPIO_56_63,
+                            ADDRESS_READ_GPIO_64_71, ADDRESS_READ_GPIO_72_79, ADDRESS_READ_GPIO_80_87, ADDRESS_READ_GPIO_88_95, ADDRESS_READ_GPIO_96_103, ADDRESS_READ_GPIO_104_111, ADDRESS_READ_GPIO_112_119, ADDRESS_READ_GPIO_120_127 };
 
 void InitPicoPins(void)
 {
@@ -108,7 +110,7 @@ void SetDataToOutput(void)
 }
 
 
-uint32 MakeAddress(uint32 uiAddress, bool bEnable)
+uint32 MakeAddress(uint8 uiAddress, bool bEnable)
 {
     uint32 uiAddressOnPins =    (uiAddress & 0x01 ? (1ul << aiAddressPins[0]) : 0) | 
                                 (uiAddress & 0x02 ? (1ul << aiAddressPins[1]) : 0) | 
@@ -145,7 +147,7 @@ uint32 guiReadDataMask =   (1 << ADDR_LINE_ENABLE |
                             1 << ADDR_LINE_5 );
 
 
-unsigned char ReverseByte(uint8 uiByte) 
+uint8 ReverseByte(uint8 uiByte) 
 {
     return ((uiByte & 0x01) << 7) | 
            ((uiByte & 0x02) << 5) | 
@@ -158,7 +160,7 @@ unsigned char ReverseByte(uint8 uiByte)
 }
 
 
-void WriteData(uint32 uiAddress, uint32 uiData)
+void WriteData(uint8 uiAddress, uint8 uiData)
 {
     uint32    uiDataOnPins;
     uint32    uiAddressOnPins;
@@ -189,11 +191,11 @@ void PulseReadData(void)
 }
 
 
-uint32 ReadData(uint32 uiAddress)
+uint8 ReadData(uint8 uiAddress)
 {
     uint32    uiDataOnPins;
     uint32    uiAddressOnPins;
-    uint32    uiValue;
+    uint8    uiValue;
 
     SetDataToInput();
 
@@ -236,7 +238,7 @@ uint32 ReadData(uint32 uiAddress)
 }
 
 
-void SetAllToOutput(unsigned char uiValue)
+void SetAllToOutput(uint8 uiValue)
 {
     for (size j = ADDRESS_OUTPUT_GPIO_56_63; j <= ADDRESS_OUTPUT_GPIO__0__7; j++)
     {
@@ -245,7 +247,7 @@ void SetAllToOutput(unsigned char uiValue)
 }
 
 
-void SetAllToData(unsigned char uiValue)
+void SetAllToData(uint8 uiValue)
 {
     for (size j = ADDRESS_WRITE_GPIO_56_63; j <= ADDRESS_WRITE_GPIO__0__7; j++)
     {

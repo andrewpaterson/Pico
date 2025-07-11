@@ -32,7 +32,6 @@ char* ExecuteCommand(const char* szCommand)
 }
 
 
-
 int main(void)
 {
     InitPicoPins();
@@ -43,8 +42,10 @@ int main(void)
 
     gpio_put(ONBOARD_LED, true);
 
-    char szInput[INPUT_BUFFER_SIZE];
-    size  uiInputIndex;
+    char    szInput[INPUT_BUFFER_SIZE];
+    size    uiInputIndex;
+    char*   szMessage;
+    size    uiLength;
 
     memset(szInput, 0, INPUT_BUFFER_SIZE);
     uiInputIndex = 0;
@@ -53,25 +54,29 @@ int main(void)
     ExecuteCommand("O");
     ExecuteCommand("OFFFFFFFFFFFFFFFF");
 
-    char    szCommand[100];
-    size    i;
-    uint8   uiRand;
+    // char    szCommand[100];
+    // size    i;
+    // uint8   uiRand;
 
-    for (;;)
-    {
-        szCommand[0]='W';
-        for (i = 0; i < 16; i++)
-        {
-            uiRand = (rand() / 10) & 0xf;
-            szCommand[1 + i] = HexChar(uiRand);
-        }
-        szCommand[1 + i]='\0';
+    // for (;;)
+    // {
+    //     ExecuteCommand("W");
+    //     sleep_ms(150);
 
-        ExecuteCommand(szCommand);
-        sleep_ms(150);
-    }
+    //     szCommand[0]='W';
+    //     for (i = 0; i < 16; i++)
+    //     {
+    //         uiRand = (rand() / 10) & 0xf;
+    //         szCommand[1 + i] = HexChar(uiRand);
+    //     }
+    //     szCommand[1 + i]='\0';
+
+    //     ExecuteCommand(szCommand);
+    //     sleep_ms(500);
+    //     szMessage = ExecuteCommand("R7");
+    // }
     
-    BlinkLed(100000);
+    // BlinkLed(100000);
 
     stdio_usb_init();
     while (!tusb_inited())
@@ -80,17 +85,33 @@ int main(void)
     }
 
     // Main loop
-    size x = 0;
     while (true) 
     {
         // Read incoming character from USB serial
         int32 c = getchar_timeout_us(0); // Timeout after 10ms
         if (c != PICO_ERROR_TIMEOUT) 
         {
-            if (c == '\n') 
+            if (c == '\n' || c == '\r') 
             {
-                szInput[uiInputIndex] = '\0';
-                ExecuteCommand(szInput, uiInputIndex);
+                if (uiInputIndex > 0)
+                {
+                    szInput[uiInputIndex] = '\0';
+                    szMessage = ExecuteCommand(szInput, uiInputIndex);
+                    uiLength = strlen(szMessage);
+                    if (uiLength > 0)
+                    {
+                        szMessage[uiLength] = '\r';
+                        szMessage[uiLength+1] = '\n';
+                        szMessage[uiLength+2] = '\0';
+                        printf(szMessage);
+                    }
+                    memset(szInput, 0, INPUT_BUFFER_SIZE);
+                    uiInputIndex = 0;
+                }
+            }
+            else if (c== '\0')
+            {
+                memset(szInput, 0, INPUT_BUFFER_SIZE);
                 uiInputIndex = 0;
             }
             else
@@ -99,12 +120,6 @@ int main(void)
                 uiInputIndex++;
             }
         }
-        if (x == 1000000)
-        {
-            printf("Pico USB UART\n");
-            x = 0;
-        }
-        x++;
     }
     
     BlinkLed(100000);

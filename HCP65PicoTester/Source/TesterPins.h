@@ -56,6 +56,16 @@
 #define ADDRESS_READ_GPIO_16_23     0x05
 #define ADDRESS_READ_GPIO__8_15     0x06
 #define ADDRESS_READ_GPIO__0__7     0x07
+#define ADDRESS_READ_GPIO_120_127   0x08
+#define ADDRESS_READ_GPIO_112_119   0x09
+#define ADDRESS_READ_GPIO_104_111   0x0A
+#define ADDRESS_READ_GPIO_96_103    0x0B
+#define ADDRESS_READ_GPIO_88_95     0x0C
+#define ADDRESS_READ_GPIO_80_87     0x0D
+#define ADDRESS_READ_GPIO_72_79     0x0E
+#define ADDRESS_READ_GPIO_64_71     0x0F
+
+extern uint8 aiReadAddresses[16];
 
 #define ADDRESS_WRITE_GPIO_56_63    0x10
 #define ADDRESS_WRITE_GPIO_48_55    0x11
@@ -81,13 +91,14 @@ void InitPicoPins(void);
 void SetDataToInput(void);
 void SetDataToOutput(void);
 
-uint32 MakeAddress(uint32 uiAddress, bool bEnable);
-void WriteData(uint32 uiAddress, uint32 uiData);
+uint8 ReverseByte(uint8 uiByte);
+uint32 MakeAddress(uint8 uiAddress, bool bEnable);
+void WriteData(uint8 uiAddress, uint8 uiData);
 void PulseWriteData(void);
 void PulseReadData(void);
-uint32 ReadData(uint32 uiAddress);
-void SetAllToOutput(unsigned char uiValue);
-void SetAllToData(unsigned char uiValue);
+uint8 ReadData(uint8 uiAddress);
+void SetAllToOutput(uint8 uiValue);
+void SetAllToData(uint8 uiValue);
 
 
 #endif // __TESTER_PINS_H__
