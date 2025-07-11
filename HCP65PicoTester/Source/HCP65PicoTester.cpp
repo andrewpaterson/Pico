@@ -20,6 +20,16 @@ void BlinkLed(int iMicrosecondDelay)
 }
 
 
+char* ExecuteCommand(const char* szCommand)
+{
+    size    uiLength;
+    char*   szMessage;
+
+    uiLength =  strlen(szCommand);
+    szMessage = ExecuteCommand((char*)szCommand, uiLength);
+
+    return szMessage;
+}
 
 
 
@@ -38,7 +48,12 @@ int main(void)
 
     memset(szInput, 0, INPUT_BUFFER_SIZE);
     uiInputIndex = 0;
-    gbUseASCIIHex = true;
+
+    ExecuteCommand("W");
+    ExecuteCommand("O");
+    ExecuteCommand("W_0F");
+    ExecuteCommand("O_0F");
+    return 1;
 
     stdio_usb_init();
     while (!tusb_inited())

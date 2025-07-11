@@ -3,7 +3,6 @@
 #include "PrimitiveTypes.h"
 
 
-void    UseASCIIHex(void);
 void    SetAllDataToZero(void);
 void    SetAllOutputToInput(void);
 void    GetAllData(void);

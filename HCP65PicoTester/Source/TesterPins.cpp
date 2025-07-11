@@ -1,10 +1,9 @@
 #include "TesterPins.h"
 
 
-uint32 aiData_8_15[] = { DATA_LINE_7, DATA_LINE_6, DATA_LINE_5, DATA_LINE_4, DATA_LINE_3, DATA_LINE_2, DATA_LINE_1, DATA_LINE_0 };
-uint32 aiData_0_7[] =  { DATA_LINE_7, DATA_LINE_6, DATA_LINE_5, DATA_LINE_4, DATA_LINE_3, DATA_LINE_2, DATA_LINE_1, DATA_LINE_0 };
+uint8 aiDataPins[] = { DATA_LINE_7, DATA_LINE_6, DATA_LINE_5, DATA_LINE_4, DATA_LINE_3, DATA_LINE_2, DATA_LINE_1, DATA_LINE_0 };
 
-uint32 aiAddress_0_5[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR_LINE_4, ADDR_LINE_5 };
+uint8 aiAddressPins[] = { ADDR_LINE_0, ADDR_LINE_1, ADDR_LINE_2, ADDR_LINE_3, ADDR_LINE_4, ADDR_LINE_5 };
 
 
 void InitPicoPins(void)
@@ -86,7 +85,7 @@ void SetDataToInput(void)
                                 1 << DATA_LINE_4 |
                                 1 << DATA_LINE_5 |
                                 1 << DATA_LINE_6 |
-                                1 << DATA_LINE_7);
+                                1 << DATA_LINE_7 );
         gbDataRead = true;
     }
 }
@@ -103,7 +102,7 @@ void SetDataToOutput(void)
                                 1 << DATA_LINE_4 |
                                 1 << DATA_LINE_5 |
                                 1 << DATA_LINE_6 |
-                                1 << DATA_LINE_7);
+                                1 << DATA_LINE_7 );
         gbDataRead = false;                    
     }
 }
@@ -111,17 +110,17 @@ void SetDataToOutput(void)
 
 uint32 MakeAddress(uint32 uiAddress, bool bEnable)
 {
-    uint32 uiAddressOnPins = ( uiAddress & 0x01 ? (1ul << aiAddress_0_5[0]) : 0) | 
-                                (uiAddress & 0x02 ? (1ul << aiAddress_0_5[1]) : 0) | 
-                                (uiAddress & 0x04 ? (1ul << aiAddress_0_5[2]) : 0) | 
-                                (uiAddress & 0x08 ? (1ul << aiAddress_0_5[3]) : 0) | 
-                                (uiAddress & 0x10 ? (1ul << aiAddress_0_5[4]) : 0) |
+    uint32 uiAddressOnPins =    (uiAddress & 0x01 ? (1ul << aiAddressPins[0]) : 0) | 
+                                (uiAddress & 0x02 ? (1ul << aiAddressPins[1]) : 0) | 
+                                (uiAddress & 0x04 ? (1ul << aiAddressPins[2]) : 0) | 
+                                (uiAddress & 0x08 ? (1ul << aiAddressPins[3]) : 0) | 
+                                (uiAddress & 0x10 ? (1ul << aiAddressPins[4]) : 0) |
                                 (bEnable ? (1ul << ADDR_LINE_ENABLE) : 0);
     return uiAddressOnPins;
 }
 
 
-uint32 guiWriteDataMask = (   1 << DATA_LINE_0 | 
+uint32 guiWriteDataMask = ( 1 << DATA_LINE_0 | 
                             1 << DATA_LINE_1 |
                             1 << DATA_LINE_2 |
                             1 << DATA_LINE_3 |
@@ -135,15 +134,28 @@ uint32 guiWriteDataMask = (   1 << DATA_LINE_0 |
                             1 << ADDR_LINE_2 |
                             1 << ADDR_LINE_3 |
                             1 << ADDR_LINE_4 |
-                            1 << ADDR_LINE_5);
+                            1 << ADDR_LINE_5 );
 
-uint32 guiReadDataMask = (1 << ADDR_LINE_ENABLE |
-                        1 << ADDR_LINE_0 |
-                        1 << ADDR_LINE_1 |
-                        1 << ADDR_LINE_2 |
-                        1 << ADDR_LINE_3 |
-                        1 << ADDR_LINE_4 |
-                        1 << ADDR_LINE_5);
+uint32 guiReadDataMask =   (1 << ADDR_LINE_ENABLE |
+                            1 << ADDR_LINE_0 |
+                            1 << ADDR_LINE_1 |
+                            1 << ADDR_LINE_2 |
+                            1 << ADDR_LINE_3 |
+                            1 << ADDR_LINE_4 |
+                            1 << ADDR_LINE_5 );
+
+
+unsigned char ReverseByte(uint8 uiByte) 
+{
+    return ((uiByte & 0x01) << 7) | 
+           ((uiByte & 0x02) << 5) | 
+           ((uiByte & 0x04) << 3) | 
+           ((uiByte & 0x08) << 1) | 
+           ((uiByte & 0x10) >> 1) | 
+           ((uiByte & 0x20) >> 3) | 
+           ((uiByte & 0x40) >> 5) | 
+           ((uiByte & 0x80) >> 7);
+}
 
 
 void WriteData(uint32 uiAddress, uint32 uiData)
@@ -151,14 +163,8 @@ void WriteData(uint32 uiAddress, uint32 uiData)
     uint32    uiDataOnPins;
     uint32    uiAddressOnPins;
 
-    if (uiAddress & 1 == 1)
-    {
-        uiDataOnPins = make_8bit_mask(aiData_8_15, uiData);
-    }
-    else
-    {
-        uiDataOnPins = make_8bit_mask(aiData_0_7, uiData);
-    }
+    uiData = ReverseByte(uiData);
+    uiDataOnPins = make_8bit_mask(aiDataPins, uiData);
 
     SetDataToOutput();
     uiAddressOnPins = MakeAddress(uiAddress, true);
@@ -204,26 +210,26 @@ uint32 ReadData(uint32 uiAddress)
     
     if (uiAddress & 1 == 1)
     {
-        uiValue =   (uiDataOnPins & (1ul << aiData_8_15[0]) ? 1 << 0 : 0) | 
-                    (uiDataOnPins & (1ul << aiData_8_15[1]) ? 1 << 1 : 0) | 
-                    (uiDataOnPins & (1ul << aiData_8_15[2]) ? 1 << 2 : 0) | 
-                    (uiDataOnPins & (1ul << aiData_8_15[3]) ? 1 << 3 : 0) | 
-                    (uiDataOnPins & (1ul << aiData_8_15[4]) ? 1 << 4 : 0) | 
-                    (uiDataOnPins & (1ul << aiData_8_15[5]) ? 1 << 5 : 0) | 
-                    (uiDataOnPins & (1ul << aiData_8_15[6]) ? 1 << 6 : 0) | 
-                    (uiDataOnPins & (1ul << aiData_8_15[7]) ? 1 << 7 : 0);
+        uiValue =   (uiDataOnPins & (1ul << aiDataPins[0]) ? 1 << 0 : 0) | 
+                    (uiDataOnPins & (1ul << aiDataPins[1]) ? 1 << 1 : 0) | 
+                    (uiDataOnPins & (1ul << aiDataPins[2]) ? 1 << 2 : 0) | 
+                    (uiDataOnPins & (1ul << aiDataPins[3]) ? 1 << 3 : 0) | 
+                    (uiDataOnPins & (1ul << aiDataPins[4]) ? 1 << 4 : 0) | 
+                    (uiDataOnPins & (1ul << aiDataPins[5]) ? 1 << 5 : 0) | 
+                    (uiDataOnPins & (1ul << aiDataPins[6]) ? 1 << 6 : 0) | 
+                    (uiDataOnPins & (1ul << aiDataPins[7]) ? 1 << 7 : 0);
 
     }
     else
     {
-        uiValue =   (uiDataOnPins & (1ul << aiData_0_7[0]) ? 1 << 0 : 0) | 
-                    (uiDataOnPins & (1ul << aiData_0_7[1]) ? 1 << 1 : 0) | 
-                    (uiDataOnPins & (1ul << aiData_0_7[2]) ? 1 << 2 : 0) | 
-                    (uiDataOnPins & (1ul << aiData_0_7[3]) ? 1 << 3 : 0) | 
-                    (uiDataOnPins & (1ul << aiData_0_7[4]) ? 1 << 4 : 0) | 
-                    (uiDataOnPins & (1ul << aiData_0_7[5]) ? 1 << 5 : 0) | 
-                    (uiDataOnPins & (1ul << aiData_0_7[6]) ? 1 << 6 : 0) | 
-                    (uiDataOnPins & (1ul << aiData_0_7[7]) ? 1 << 7 : 0);
+        uiValue =   (uiDataOnPins & (1ul << aiDataPins[0]) ? 1 << 0 : 0) | 
+                    (uiDataOnPins & (1ul << aiDataPins[1]) ? 1 << 1 : 0) | 
+                    (uiDataOnPins & (1ul << aiDataPins[2]) ? 1 << 2 : 0) | 
+                    (uiDataOnPins & (1ul << aiDataPins[3]) ? 1 << 3 : 0) | 
+                    (uiDataOnPins & (1ul << aiDataPins[4]) ? 1 << 4 : 0) | 
+                    (uiDataOnPins & (1ul << aiDataPins[5]) ? 1 << 5 : 0) | 
+                    (uiDataOnPins & (1ul << aiDataPins[6]) ? 1 << 6 : 0) | 
+                    (uiDataOnPins & (1ul << aiDataPins[7]) ? 1 << 7 : 0);
     }
 
     return uiValue;

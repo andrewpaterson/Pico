@@ -57,14 +57,15 @@ void TestRead(bool bReadLeft)
 
 void TestWrite(void)
 {
+    uint32 iDataOffset;
+    uint32 iAddress;
+
     for (;;)
     {
         SetAllToOutput(0xff);
         PulseWriteData();
         for (size i = 0; i < 64; i++)
         {
-            uint32 iDataOffset;
-            uint32 iAddress;
             SetAllToData(0x00);
 
             iAddress = i / 8;
@@ -79,8 +80,6 @@ void TestWrite(void)
         PulseWriteData();
         for (size i = 63; i >= 0; i--)
         {
-            uint32 iDataOffset;
-            uint32 iAddress;
             SetAllToOutput(0x00);
 
             iAddress = i / 8;
