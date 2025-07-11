@@ -62,10 +62,10 @@ int main(void)
         szCommand[0]='W';
         for (i = 0; i < 16; i++)
         {
-            uiRand = rand() & 0xf;
+            uiRand = (rand() / 10) & 0xf;
             szCommand[1 + i] = HexChar(uiRand);
         }
-        szCommand[i+1]='\0';
+        szCommand[1 + i]='\0';
 
         ExecuteCommand(szCommand);
         sleep_ms(150);
