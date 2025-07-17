@@ -54,30 +54,6 @@ int main(void)
     ExecuteCommand("O");
     ExecuteCommand("OFFFFFFFFFFFFFFFF");
 
-    // char    szCommand[100];
-    // size    i;
-    // uint8   uiRand;
-
-    // for (;;)
-    // {
-    //     ExecuteCommand("W");
-    //     sleep_ms(150);
-
-    //     szCommand[0]='W';
-    //     for (i = 0; i < 16; i++)
-    //     {
-    //         uiRand = (rand() / 10) & 0xf;
-    //         szCommand[1 + i] = HexChar(uiRand);
-    //     }
-    //     szCommand[1 + i]='\0';
-
-    //     ExecuteCommand(szCommand);
-    //     sleep_ms(500);
-    //     szMessage = ExecuteCommand("R7");
-    // }
-    
-    // BlinkLed(100000);
-
     stdio_usb_init();
     while (!tusb_inited())
     {
@@ -104,6 +80,10 @@ int main(void)
                         szMessage[uiLength+1] = '\n';
                         szMessage[uiLength+2] = '\0';
                         printf(szMessage);
+                    }
+                    else
+                    {
+                        printf("\r\n");
                     }
                     memset(szInput, 0, INPUT_BUFFER_SIZE);
                     uiInputIndex = 0;

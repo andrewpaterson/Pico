@@ -144,6 +144,7 @@ void SetData(char* szCommand, size uiLength)
     size    ui;
     uint8   auiData[16];
 
+    memset(auiData, 0, 16);
     uiBytes = HexData(auiData, &szCommand[0], uiLength);
     if (uiBytes != SIZE_MAX)
     {
@@ -329,6 +330,10 @@ char* ExecuteCommand(char* szCommand, size uiLength)
         {
             GetAllData();
         }
+        else
+        {
+            strcpy(gszMessage, "Error: Unknown command");
+        }
     }
     else
     {
@@ -351,6 +356,10 @@ char* ExecuteCommand(char* szCommand, size uiLength)
         else if (szCommand[0] == 'R')
         {
             GetData(&szCommand[1], uiLength - 1);
+        }
+        else
+        {
+            strcpy(gszMessage, "Error: Unknown command");
         }
     }
 
