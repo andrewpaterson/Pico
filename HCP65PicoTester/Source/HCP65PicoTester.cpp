@@ -50,9 +50,9 @@ int main(void)
     memset(szInput, 0, INPUT_BUFFER_SIZE);
     uiInputIndex = 0;
 
+    ExecuteCommand("P");
     ExecuteCommand("W");
     ExecuteCommand("O");
-    ExecuteCommand("OFFFFFFFFFFFFFFFF");
 
     stdio_usb_init();
     while (!tusb_inited())

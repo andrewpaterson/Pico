@@ -288,17 +288,138 @@ void GetData(char* szCommand, size uiLength)
     }
     else
     {
-        strcpy(gszMessage, "Error: Expected offset one or two offsets");
+        strcpy(gszMessage, "Error: Expected one offset or two offsets");
+        return;
+    }
+}
+
+
+void SetAllPowerOff(void)
+{
+    uint32 uiPowerPins = 1ul << PWR_12V |
+                         1ul << PWR_5V_A |
+                         1ul << PWR_5V_B |
+                         1ul << PWR_5V_C |
+                         1ul << PWR_GND_A |
+                         1ul << PWR_GND_B |
+                         1ul << PWR_GND_C |
+                         1ul << PWR_GND_D;
+
+    gpio_put_masked(uiPowerPins, 0);
+}
+
+
+void SetGround(char* szCommand, size uiLength)
+{
+    if (uiLength == 2)
+    {
+        char    cN;
+        bool    b;
+
+        cN = szCommand[0];
+        if (cN >= 'a' && cN <= 'd')
+        {
+            if (szCommand[1] == '0')
+            {
+                b = false;
+            }
+            else if (szCommand[1] == '1')
+            {
+                b = true;
+            }
+            else
+            {
+                strcpy(gszMessage, "Error: Expected 1 or 0");
+                return;
+            }
+            gpio_put(PWR_GND_A + cN - 'a', b);
+        }
+        else
+        {
+                strcpy(gszMessage, "Error: Expected 1 or 0");
+                return;
+        }
+    }
+    else
+    {
+        strcpy(gszMessage, "Error: Expected ground identifier and state");
+    }
+}
+
+
+void Set5V(char* szCommand, size uiLength)
+{
+    if (uiLength == 2)
+    {
+        char    cN;
+        bool    b;
+
+        cN = szCommand[0];
+        if (cN >= 'a' && cN <= 'c')
+        {
+            if (szCommand[1] == '0')
+            {
+                b = false;
+            }
+            else if (szCommand[1] == '1')
+            {
+                b = true;
+            }
+            else
+            {
+                strcpy(gszMessage, "Error: Expected 1 or 0");
+                return;
+            }
+            gpio_put(PWR_5V_A + cN - 'a', b);
+        }
+        else
+        {
+                strcpy(gszMessage, "Error: Expected 1 or 0");
+                return;
+        }
+    }
+    else
+    {
+        strcpy(gszMessage, "Error: Expected 5V identifier and state");
+    }
+}
+
+
+void Set12V(char* szCommand, size uiLength)
+{
+    if (uiLength == 1)
+    {
+        bool    b;
+
+        if (szCommand[0] == '0')
+        {
+            b = false;
+        }
+        else if (szCommand[0] == '1')
+        {
+            b = true;
+        }
+        else
+        {
+            strcpy(gszMessage, "Error: Expected 1 or 0");
+            return;
+        }
+        gpio_put(PWR_12V, b);
+    }
+    else
+    {
+        strcpy(gszMessage, "Error: Expected 12V 1 or 0");
+        return;
     }
 }
 
 
 char* ExecuteCommand(char* szCommand, size uiLength)
 {
-    //* Wx..x - Write data bits e.g. Dff00ff00ff00ff00ff00ff00ff00ff00 writes 1s to bits 127 to 120 then 0s to bits 119 to 112 etc... 
-    //                            Dff writes 1s to bits 7 to 0.
-    //* W_ox..x - Write data bits with byte offset e.g. D_1ff00 writes 1s to bits 23 to 16 then 0s to bits 15 to 8.
-    //                                               D_0f writes 1s to bits 3 to 0 (same as Df)
+    //* Wx..x - Write data bits e.g. Wff00ff00ff00ff00ff00ff00ff00ff00 writes 1s to bits 127 to 120 then 0s to bits 119 to 112 etc... 
+    //                               Wff writes 1s to bits 7 to 0.
+    //* W_ox..x - Write data bits with byte offset e.g. W_1ff00 writes 1s to bits 23 to 16 then 0s to bits 15 to 8.
+    //                                                  W_0f writes 1s to bits 3 to 0 (same as Wf)
     //* W - Write all data bits with 0.
     //* Ox..x - Set GPIO as outputs from bits e.g. Off00ff00ff00ff00ff00ff00ff00ff00 sets bits 127 to 120 to outputs then sets bits 119 to 112 to inputs etc... 
     //* O_ox..x - same as Wo_xxx but sets outputs.
@@ -310,6 +431,11 @@ char* ExecuteCommand(char* szCommand, size uiLength)
     
     //Note: you should call W before calling O to ensure the correct values are present when the GPIO is set to output.
     //Note: the first byte returned is the high byte.  The first nybble returned is the high nybble.
+
+    //  P - Write all power off
+    //  PGnx - Write ground power n (a, b, c, d) on or off (x 1 or x 0).  e.g. PGa1 connects ground 'a'.  PGb0 disconnects ground 'b'.
+    //  P5nx - Write 5V power n (a, b, c) on or off (x 1 or x 0).  e.g. P5c1 connects 5V 'c'.  P5b0 disconnects 5V 'b'.
+    //  PHx - Write 12V power on or off (x 1 or x 0).  e.g. PH1 connects 12V.  PH0 disconnects 12V.
     
     gszMessage[0] = '\0';
     if (uiLength == 0)
@@ -330,6 +456,10 @@ char* ExecuteCommand(char* szCommand, size uiLength)
         {
             GetAllData();
         }
+        else if (szCommand[0] == 'P')
+        {
+            SetAllPowerOff();
+        }
         else
         {
             strcpy(gszMessage, "Error: Unknown command");
@@ -344,6 +474,18 @@ char* ExecuteCommand(char* szCommand, size uiLength)
         else if (MemCmp("O_", 2, szCommand, 2) == 0)
         {
             SetOffsetOutputs(&szCommand[2], uiLength - 2);
+        }
+        else if (MemCmp("PG", 2, szCommand, 2) == 0)
+        {
+            SetGround(&szCommand[2], uiLength - 2);
+        }
+        else if (MemCmp("P5", 2, szCommand, 2) == 0)
+        {
+            Set5V(&szCommand[2], uiLength - 2);
+        }
+        else if (MemCmp("PH", 2, szCommand, 2) == 0)
+        {
+            Set12V(&szCommand[2], uiLength - 2);
         }
         else if (szCommand[0] == 'W')
         {

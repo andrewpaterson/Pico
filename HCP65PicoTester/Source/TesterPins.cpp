@@ -10,8 +10,8 @@ uint8 aiReadAddresses[16] = { ADDRESS_READ_GPIO__0__7, ADDRESS_READ_GPIO__8_15, 
 
 void InitPicoPins(void)
 {
-    stdio_init_all();
     gpio_put_all(0);
+    stdio_init_all();
 
     gpio_init(ONBOARD_LED);
     gpio_set_dir(ONBOARD_LED, GPIO_OUT);
@@ -31,7 +31,11 @@ void InitPicoPins(void)
     gpio_set_dir(PWR_GND_A, GPIO_OUT);
     gpio_set_dir(PWR_GND_B, GPIO_OUT);    
     gpio_set_dir(PWR_GND_C, GPIO_OUT);
-    gpio_set_dir(PWR_GND_D, GPIO_OUT);   
+    gpio_set_dir(PWR_GND_D, GPIO_OUT);
+
+    gpio_put(PWR_5V_A, true);
+    gpio_put(PWR_5V_A, false);
+    gpio_put(PWR_5V_A, true);
 
     gpio_init(ENABLE_GPIO);
     gpio_init(ADDR_LINE_ENABLE);
@@ -193,9 +197,9 @@ void PulseReadData(void)
 
 uint8 ReadData(uint8 uiAddress)
 {
-    uint32    uiDataOnPins;
-    uint32    uiAddressOnPins;
-    uint8    uiValue;
+    uint32  uiDataOnPins;
+    uint32  uiAddressOnPins;
+    uint8   uiValue;
 
     SetDataToInput();
 
