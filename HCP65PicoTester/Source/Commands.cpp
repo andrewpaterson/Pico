@@ -4,6 +4,8 @@
 
 
 char    gszMessage[256];
+uint8   guiLastReadStart = 0x0;
+uint8   guiLastReadEnd = 0xf;
 
 
 size HexValue(char c)
@@ -238,6 +240,8 @@ void GetOffsetData(uint8 uiStart, uint8 uiEndInclusive)
 void GetAllData(void)
 {
     GetOffsetData(0x0, 0xf);
+    guiLastReadStart = 0x0;
+    guiLastReadEnd = 0xf;
 }
 
 
@@ -273,6 +277,8 @@ void GetData(char* szCommand, size uiLength)
         }
 
         GetOffsetData(uiStart, uiEndInclusive);
+        guiLastReadStart = uiStart;
+        guiLastReadEnd = uiEndInclusive;
     }
     else if (uiLength == 1)
     {
@@ -285,6 +291,9 @@ void GetData(char* szCommand, size uiLength)
         }
 
         GetOffsetData(uiStart, uiStart);
+        guiLastReadStart = uiStart;
+        guiLastReadEnd = uiStart;
+
     }
     else
     {
@@ -428,6 +437,7 @@ char* ExecuteCommand(char* szCommand, size uiLength)
     //       e.g. R0_7 return all 128 bits of GPIO
     //* Ro - Same as Ro_p but for a single byte.
     //* R - Latch ALL input bits.  Return all values from byte 0 to 15 inclusive.
+    //  RR - Perform last read again.
     
     //Note: you should call W before calling O to ensure the correct values are present when the GPIO is set to output.
     //Note: the first byte returned is the high byte.  The first nybble returned is the high nybble.
@@ -436,6 +446,8 @@ char* ExecuteCommand(char* szCommand, size uiLength)
     //  PGnx - Write ground power n (a, b, c, d) on or off (x 1 or x 0).  e.g. PGa1 connects ground 'a'.  PGb0 disconnects ground 'b'.
     //  P5nx - Write 5V power n (a, b, c) on or off (x 1 or x 0).  e.g. P5c1 connects 5V 'c'.  P5b0 disconnects 5V 'b'.
     //  PHx - Write 12V power on or off (x 1 or x 0).  e.g. PH1 connects 12V.  PH0 disconnects 12V.
+
+    //  POW - Reset, equivalent to P O then W
     
     gszMessage[0] = '\0';
     if (uiLength == 0)
@@ -471,9 +483,19 @@ char* ExecuteCommand(char* szCommand, size uiLength)
         {
             SetOffsetData(&szCommand[2], uiLength - 2);
         }
+        else if (MemCmp("RR", 2, szCommand, 2) == 0)
+        {
+            GetOffsetData(guiLastReadStart, guiLastReadEnd);
+        }
         else if (MemCmp("O_", 2, szCommand, 2) == 0)
         {
             SetOffsetOutputs(&szCommand[2], uiLength - 2);
+        }
+        else if (MemCmp("POW", 3, szCommand, 3) == 0)
+        {
+            SetAllPowerOff();
+            SetAllOutputsToInput();
+            SetAllDataToZero();
         }
         else if (MemCmp("PG", 2, szCommand, 2) == 0)
         {
@@ -498,6 +520,21 @@ char* ExecuteCommand(char* szCommand, size uiLength)
         else if (szCommand[0] == 'R')
         {
             GetData(&szCommand[1], uiLength - 1);
+        }
+        else if (MemCmp("Help", 4, szCommand, 4) == 0)
+        {
+            strcpy(gszMessage, "See 'Commands.cpp' for a full list and description of commands.");
+        }
+        else if (MemCmp("Echo", 4, szCommand, 4) == 0)
+        {
+            size uiLength;
+            
+            uiLength = strlen(szCommand) - 4;
+            if (uiLength > 255)
+            {
+                szCommand[255 + 4] = '\0';
+            }
+            strcpy(gszMessage, &szCommand[4]);
         }
         else
         {

@@ -67,7 +67,7 @@ int main(void)
         int32 c = getchar_timeout_us(0); // Timeout after 10ms
         if (c != PICO_ERROR_TIMEOUT) 
         {
-            if (c == '\n' || c == '\r') 
+            if (c == '\r') 
             {
                 if (uiInputIndex > 0)
                 {
@@ -76,23 +76,25 @@ int main(void)
                     uiLength = strlen(szMessage);
                     if (uiLength > 0)
                     {
-                        szMessage[uiLength] = '\r';
-                        szMessage[uiLength+1] = '\n';
-                        szMessage[uiLength+2] = '\0';
+                        szMessage[uiLength] = '\n';
+                        szMessage[uiLength+1] = '\0';
                         printf(szMessage);
                     }
                     else
                     {
-                        printf("\r\n");
+                        printf("\n");
                     }
                     memset(szInput, 0, INPUT_BUFFER_SIZE);
                     uiInputIndex = 0;
                 }
             }
-            else if (c== '\0')
+            else if (c == '\0')
             {
                 memset(szInput, 0, INPUT_BUFFER_SIZE);
                 uiInputIndex = 0;
+            }
+            else if (c == '\n')
+            {
             }
             else
             {
