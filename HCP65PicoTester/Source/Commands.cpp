@@ -423,6 +423,19 @@ void Set12V(char* szCommand, size uiLength)
 }
 
 
+void Echo(char* szCommand)
+{
+    size uiLength;
+    
+    uiLength = strlen(szCommand) - 4;
+    if (uiLength > 255)
+    {
+        szCommand[255 + 4] = '\0';
+    }
+    strcpy(gszMessage, &szCommand[4]);
+}
+
+
 char* ExecuteCommand(char* szCommand, size uiLength)
 {
     //* Wx..x - Write data bits e.g. Wff00ff00ff00ff00ff00ff00ff00ff00 writes 1s to bits 127 to 120 then 0s to bits 119 to 112 etc... 
@@ -527,14 +540,7 @@ char* ExecuteCommand(char* szCommand, size uiLength)
         }
         else if (MemCmp("Echo", 4, szCommand, 4) == 0)
         {
-            size uiLength;
-            
-            uiLength = strlen(szCommand) - 4;
-            if (uiLength > 255)
-            {
-                szCommand[255 + 4] = '\0';
-            }
-            strcpy(gszMessage, &szCommand[4]);
+            Echo(szCommand);
         }
         else
         {
