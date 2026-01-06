@@ -1,5 +1,6 @@
 #include "TesterPins.h"
 #include "TesterState.h"
+#include "IntegerHelper.h"
 #include "Commands.h"
 
 
@@ -423,6 +424,49 @@ void Set12V(char* szCommand, size uiLength)
 }
 
 
+void SetPower(char* szCommand, size uiLength)
+{
+    size    uiLocalLength;
+
+    for (;;)
+    {
+        if (!StrEmpty(gszMessage))
+        {
+            return;
+        }
+
+        if (MemCmp("G", 1, szCommand, 1) == 0)
+        {
+            uiLocalLength = Min(2, uiLength-1);
+            SetGround(&szCommand[1], uiLocalLength);
+        }
+        else if (MemCmp("5", 1, szCommand, 1) == 0)
+        {
+            uiLocalLength = Min(2, uiLength-1);
+            Set5V(&szCommand[1], uiLocalLength);
+        }
+        else if (MemCmp("H", 1, szCommand, 1) == 0)
+        {
+            uiLocalLength = Min(1, uiLength-1);
+            Set12V(&szCommand[1], uiLocalLength);
+        }
+        else
+        {
+            uiLocalLength = 0;
+            strcpy(gszMessage, "Error: Unknown power command.");
+            return;
+        }
+
+        uiLength = uiLength - uiLocalLength - 1;
+        szCommand = &szCommand[1 + uiLocalLength];
+        if (StrEmpty(szCommand))
+        {
+            break;
+        }
+    }
+}
+
+
 void Echo(char* szCommand)
 {
     size uiLength;
@@ -487,7 +531,7 @@ char* ExecuteCommand(char* szCommand, size uiLength)
         }
         else
         {
-            strcpy(gszMessage, "Error: Unknown command");
+            strcpy(gszMessage, "Error: Unknown command.");
         }
     }
     else
@@ -510,18 +554,18 @@ char* ExecuteCommand(char* szCommand, size uiLength)
             SetAllOutputsToInput();
             SetAllDataToZero();
         }
-        else if (MemCmp("PG", 2, szCommand, 2) == 0)
+        else if (MemCmp("P", 1, szCommand, 1) == 0)
         {
-            SetGround(&szCommand[2], uiLength - 2);
+            SetPower(&szCommand[1], uiLength - 1);
         }
-        else if (MemCmp("P5", 2, szCommand, 2) == 0)
-        {
-            Set5V(&szCommand[2], uiLength - 2);
-        }
-        else if (MemCmp("PH", 2, szCommand, 2) == 0)
-        {
-            Set12V(&szCommand[2], uiLength - 2);
-        }
+        // else if (MemCmp("P5", 2, szCommand, 2) == 0)
+        // {
+        //     Set5V(&szCommand[2], uiLength - 2);
+        // }
+        // else if (MemCmp("PH", 2, szCommand, 2) == 0)
+        // {
+        //     Set12V(&szCommand[2], uiLength - 2);
+        // }
         else if (szCommand[0] == 'W')
         {
             SetData(&szCommand[1], uiLength - 1);
@@ -544,7 +588,7 @@ char* ExecuteCommand(char* szCommand, size uiLength)
         }
         else
         {
-            strcpy(gszMessage, "Error: Unknown command");
+            strcpy(gszMessage, "Error: Unknown command.");
         }
     }
 

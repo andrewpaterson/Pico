@@ -28,6 +28,7 @@ target_sources( hcp65_pico_tester PRIVATE
                 Source/GeneralPins.cpp
                 Source/PointerFunctions.cpp
                 Source/StringHelper.cpp
+                Source/IntegerHelper.cpp
                 Source/TesterPins.cpp
                 Source/TesterState.cpp
                 Source/TestFunctions.cpp

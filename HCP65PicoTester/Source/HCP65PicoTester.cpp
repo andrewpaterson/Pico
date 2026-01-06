@@ -27,7 +27,7 @@ char* ExecuteCommand(const char* szCommand)
 
     uiLength =  strlen(szCommand);
     szMessage = ExecuteCommand((char*)szCommand, uiLength);
-
+ 
     return szMessage;
 }
 
